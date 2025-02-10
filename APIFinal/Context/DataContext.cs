@@ -15,7 +15,7 @@ namespace APIFinal.Context
         public DbSet<PAR> PAR { get; set; }
         public DbSet<ICS> ICS { get; set; }
         public DbSet<Transfer> Transfer { get; set; }
-        public DbSet<ArchivedTransactions> ArchivedTransactions { get; set; }
+        public DbSet<ArchivedTransactions> ArchievedTransactions { get; set; }
         public DbSet<ItemDisposal> ItemDisposal { get; set; }
 
         public DataContext(DbContextOptions<DataContext> options) : base(options) { }

@@ -17,12 +17,12 @@ namespace APIFinal.Controllers
         [HttpGet]
         public List<ArchivedTransactions> GetArchivedTransactions()
         {
-            return _dataContext.ArchivedTransactions.ToList();
+            return _dataContext.ArchievedTransactions.ToList();
         }
         [HttpPost]
         public void PostArchivedTransactions(ArchivedTransactions archivedTransactions)
         {
-            _dataContext.ArchivedTransactions.Add(archivedTransactions);
+            _dataContext.ArchievedTransactions.Add(archivedTransactions);
             _dataContext.SaveChanges();
         }
     }
