@@ -19,6 +19,11 @@ namespace APIFinal.Controllers
         {
             return _dataContext.Items.ToList();
         }
+        [HttpGet("byItemNames")]
+        public List<string> GetItemNames()
+        {
+            return _dataContext.Items.Select(i => i.ItemName).ToList();
+        }
 
         [HttpPost]
         public void PostItem(Items item)
