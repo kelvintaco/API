@@ -19,10 +19,10 @@ namespace APIFinal.Controllers
         {
             return _dataContext.PAR.ToList();
         }
-        [HttpGet("byParID/{parCode}", Name = "GetbyParID")]
-        public PAR GetbyParID(string parCode)
+        [HttpGet("byParID")]
+        public List<string> GetParID()
         {
-            return _dataContext.PAR.FirstOrDefault(x => x.ParID == parCode);
+            return _dataContext.PAR.Select(i => i.ParID).ToList();
         }
 
         [HttpPost]
