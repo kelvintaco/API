@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using APIFinal.Context;
 using APIFinal.Models;
+using System.Data.Entity;
 
 namespace APIFinal.Controllers
 {
@@ -19,7 +20,13 @@ namespace APIFinal.Controllers
         {
             return _dataContext.Custodians.ToList();
         }
-        
+
+        [HttpGet("GetLatest")]
+        public List<string> GetLatest()
+        {
+            return _dataContext.Custodians.Select(i => i.CSTCode).ToList();
+        }
+
         [HttpPost]
         public void PostCustodian(Custodian custodian)
         {
