@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using APIFinal.Context;
 using APIFinal.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace APIFinal.Controllers
 {
@@ -21,6 +22,19 @@ namespace APIFinal.Controllers
         }
         [HttpGet("byParID")]
         public List<string> GetParID()
+        {
+            return _dataContext.PAR.Select(i => i.ParID).ToList();
+        }
+        [HttpGet("Exists/{parId}")]
+        public async Task<IActionResult> CheckParIDExists(string parId)
+        {
+            bool exists = await _dataContext.PAR.AnyAsync(p => p.ParID == parId);
+            return Ok(exists);
+        }
+
+
+        [HttpGet("GetLatest")]
+        public List<string> GetLatest()
         {
             return _dataContext.PAR.Select(i => i.ParID).ToList();
         }

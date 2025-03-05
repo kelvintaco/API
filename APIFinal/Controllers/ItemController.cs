@@ -24,6 +24,16 @@ namespace APIFinal.Controllers
         {
             return _dataContext.Items.Select(i => i.ItemName).ToList();
         }
+        [HttpGet("getItemCode/{itemName}")]
+        public ActionResult<int> GetItemCode(string itemName)
+        {
+            var item = _dataContext.Items.FirstOrDefault(i => i.ItemName == itemName);
+            if (item == null)
+            {
+                return NotFound($"Item with name '{itemName}' not found.");
+            }
+            return Ok(item.ItemCode);
+        }
 
         [HttpPost]
         public void PostItem(Items item)

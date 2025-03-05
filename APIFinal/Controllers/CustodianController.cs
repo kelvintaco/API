@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using APIFinal.Context;
 using APIFinal.Models;
-using System.Data.Entity;
+using Microsoft.EntityFrameworkCore;
 
 namespace APIFinal.Controllers
 {
@@ -25,6 +25,13 @@ namespace APIFinal.Controllers
         public List<string> GetLatest()
         {
             return _dataContext.Custodians.Select(i => i.CSTCode).ToList();
+        }
+
+        [HttpGet("Exists/{cstcode}")]
+        public async Task<IActionResult> CheckCstCodeExists(string cstcode)
+        {
+            bool exists = await _dataContext.Custodians.AnyAsync(c => c.CSTCode == cstcode);
+            return Ok(exists);
         }
 
         [HttpPost]

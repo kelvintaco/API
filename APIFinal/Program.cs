@@ -13,18 +13,16 @@ builder.Services.AddDbContext<DataContext>(options =>
     options.UseSqlServer("Server=.\\SQLEXPRESS;Database=SystemMonitoringDB;Trusted_Connection=True;TrustServerCertificate=True"),
     ServiceLifetime.Scoped);
 
-void Configure(IServiceCollection services)
+builder.Services.AddCors(options =>
 {
-    services.AddCors(options =>
+    options.AddPolicy("AllowBlazorOrigin", builder =>
     {
-        options.AddPolicy("AllowBlazorOrigin",
-            builder =>
-            {
-                builder.WithOrigins("http://localhost:53555", "https://localhost:7054/");
-
-            });
+        builder.WithOrigins("http://localhost:53555", "https://localhost:7054")
+               .AllowAnyMethod()
+               .AllowAnyHeader()  // Allow all headers, including Content-Type
+               .AllowCredentials(); // Allow sending cookies/authentication if needed
     });
-}
+});
 
 var app = builder.Build();
 
@@ -35,15 +33,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Apply the CORS policy correctly
+app.UseCors("AllowBlazorOrigin"); // Apply the named CORS policy here
+
 app.UseHttpsRedirection();
-
-app.UseRouting();
-
-app.UseCors("AllowBlazorOrigin");
-app.UseCors(policy => policy.AllowAnyOrigin());
-
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();
