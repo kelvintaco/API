@@ -105,7 +105,7 @@ namespace APIFinal.Migrations
                     ItemName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ParName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     DprName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ParDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    ParDate = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     refNo = table.Column<int>(type: "int", nullable: false),
                     ParQty = table.Column<int>(type: "int", nullable: false)
                 },

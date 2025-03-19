@@ -8,7 +8,7 @@ namespace APIFinal.Context
         public DataContext CreateDbContext(string[] args = null)
         {
             var options = new DbContextOptionsBuilder<DataContext>();
-            options.UseSqlServer("Server=.\\SQLEXPRESS;Database=SystemMonitoringDB;Trusted_Connection=True;TrustServerCertificate=True");
+            options.UseSqlServer("Server=.\\SQLEXPRESS;Database=SystemDB;Trusted_Connection=True;TrustServerCertificate=True");
 
             return new DataContext(options.Options);
         }

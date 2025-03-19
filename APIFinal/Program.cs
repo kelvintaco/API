@@ -10,7 +10,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<DataContext>(options =>
-    options.UseSqlServer("Server=.\\SQLEXPRESS;Database=SystemMonitoringDB;Trusted_Connection=True;TrustServerCertificate=True"),
+    options.UseSqlServer("Server=.\\SQLEXPRESS;Database=SystemDB;Trusted_Connection=True;TrustServerCertificate=True"),
     ServiceLifetime.Scoped);
 
 builder.Services.AddCors(options =>
