@@ -5,7 +5,7 @@ namespace APIFinal.Context
 {
     public class DataContextFactory : IDesignTimeDbContextFactory<DataContext>
     {
-        public DataContext CreateDbContext(string[] args = null)
+        public DataContext CreateDbContext(string[] args)
         {
             var options = new DbContextOptionsBuilder<DataContext>();
             options.UseSqlServer("Server=.\\SQLEXPRESS;Database=SystemDB;Trusted_Connection=True;TrustServerCertificate=True");
