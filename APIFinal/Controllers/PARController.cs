@@ -25,6 +25,17 @@ namespace APIFinal.Controllers
         {
             return _dataContext.PAR.Select(i => i.ParID).ToList();
         }
+        [HttpGet("byParID/{parid}")]
+        public ActionResult<PAR> GetByParID(string parid)
+        {
+            var par = _dataContext.PAR.FirstOrDefault(x => x.ParID == parid);
+            if (par == null)
+            {
+                return NotFound();
+            }
+            return Ok(par);
+        }
+
 
         [HttpGet("Exists/{parId}")]
         public async Task<IActionResult> CheckParIDExists(string parId)
