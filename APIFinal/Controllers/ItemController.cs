@@ -49,5 +49,18 @@ namespace APIFinal.Controllers
             _dataContext.Items.Remove(dispoitem);
             _dataContext.SaveChanges();
         }
+        [HttpDelete("byItemName/{itemName}", Name = "DeletebyItemName")]
+        public IActionResult DeletebyItemName(string itemName)
+        {
+            var item = _dataContext.Items.FirstOrDefault(i => i.ItemName == itemName);
+            if (item == null)
+            {
+                return NotFound($"Item with name '{itemName}' not found.");
+            }
+
+            _dataContext.Items.Remove(item);
+            _dataContext.SaveChanges();
+            return Ok($"Item with name '{itemName}' has been deleted.");
+        }
     }
 }
