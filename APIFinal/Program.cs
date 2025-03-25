@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using APIFinal.Context;
+using OfficeOpenXml;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +27,14 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "StaticFiles")),
+    RequestPath = "/static" // Serve files under the /static path
+});
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

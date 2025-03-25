@@ -34,6 +34,16 @@ namespace APIFinal.Controllers
             }
             return Ok(item.ItemCode);
         }
+        [HttpGet("getItemsPriceByName/{itemName}")]
+        public ActionResult<decimal> GetItemsPriceByName(string itemName)
+        {
+            var item = _dataContext.Items.FirstOrDefault(i => i.ItemName == itemName);
+            if (item == null)
+            {
+                return NotFound($"Item with name '{itemName}' not found.");
+            }
+            return Ok(item.Price);
+        }
 
         [HttpPost]
         public void PostItem(Items item)
