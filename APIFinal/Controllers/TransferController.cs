@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using APIFinal.Context;
 using APIFinal.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace APIFinal.Controllers
 {
@@ -19,6 +20,18 @@ namespace APIFinal.Controllers
         {
             return _dataContext.Transfer.ToList();
         }
+        [HttpGet("GetLatest")]
+        public List<int> GetLatest()
+        {
+            return _dataContext.Transfer.Select(i => i.PtrId).ToList();
+        }
+        [HttpGet("Exists/{prtid}")]
+        public async Task<IActionResult> CheckPrtIdExists(int prtid)
+        {
+            bool exists = await _dataContext.Transfer.AnyAsync(c => c.PtrId == prtid);
+            return Ok(exists);
+        }
+
 
         [HttpPost]
         public void Post([FromBody] Transfer transfer)

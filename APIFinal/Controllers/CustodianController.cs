@@ -33,6 +33,28 @@ namespace APIFinal.Controllers
             bool exists = await _dataContext.Custodians.AnyAsync(c => c.CSTCode == cstcode);
             return Ok(exists);
         }
+        //[HttpGet("getCstCode/{cstname}")] 
+        //public ActionResult<string> GetItemCode(string cstcode)
+        //{
+        //    var item = _dataContext.Custodians.FirstOrDefault(i => i.CSTCode == cstcode);
+        //    if (item == null)
+        //    {
+        //        return NotFound($"Item with name '{cstcode}' not found.");
+        //    }
+        //    return Ok(item.CSTName);
+        //}
+        [HttpGet("getCstCode/{cstname}")]
+        public ActionResult<string> GetCstCode(string cstname)
+        {
+            var code = _dataContext.Custodians.FirstOrDefault(i => i.CSTName == cstname);
+            if (code == null)
+            {
+                return NotFound($"Custodian with name '{cstname}' not found.");
+            }
+
+            return Ok(code.CSTCode);
+        }
+
 
         [HttpPost]
         public void PostCustodian(Custodian custodian)
