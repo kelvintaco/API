@@ -58,7 +58,7 @@ namespace APIFinal.Controllers
             _dataContext.SaveChanges();
         }
 
-        [HttpDelete("byParID/{parCode}", Name = "DeletebyParID")]
+        [HttpDelete("byParID/{parid}")]
         public void DeletebyPARCode(string parid)
         {
             var toarchive = _dataContext.PAR.FirstOrDefault(x => x.ParID == parid);
