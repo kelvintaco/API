@@ -51,10 +51,8 @@ namespace APIFinal.Controllers
             {
                 return NotFound($"Custodian with name '{cstname}' not found.");
             }
-
             return Ok(code.CSTCode);
         }
-
 
         [HttpPost]
         public void PostCustodian(Custodian custodian)
