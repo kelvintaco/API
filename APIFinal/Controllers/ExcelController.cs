@@ -47,7 +47,7 @@ namespace WebSystemMonitoring.Controllers
                 worksheet.Cells["F9"].Value = data.Value;
                 worksheet.Cells["G9"].Value = data.Price;
                 worksheet.Cells["A35"].Value = data.ParName;
-                worksheet.Cells["H9"].Value = data.Condition;
+                worksheet.Cells["A40"].Value = data.Condition;
 
                 if (data.IsClassification1) worksheet.Cells["A25"].Value = "/";
                 if (data.IsClassification2) worksheet.Cells["A26"].Value = "/";
@@ -194,7 +194,7 @@ namespace WebSystemMonitoring.Controllers
     public class SurrenderData
     {
         public string Quantity { get; set; }
-        public string ItemCode { get; set; }
+        public int ItemCode { get; set; }
         public string ItemName { get; set; }
         public DateTime ParDate { get; set; }
         public string ParID { get; set; }
@@ -209,6 +209,12 @@ namespace WebSystemMonitoring.Controllers
         public bool IsClassification5 { get; set; }
         public bool CopiesEndUser { get; set; }
         public bool CopiesGSO { get; set; }
+        public string? SurName { get; set; }
+        public string? DprName { get; set; }
+        public string? PrpName { get; set; }
+        public string? archiveDate { get; set; }
+        public string? ItemCond { get; set; }
+        public int SurQTY { get; set; }
     }
 
     public class ParData
