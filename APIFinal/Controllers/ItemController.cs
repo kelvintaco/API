@@ -44,6 +44,16 @@ namespace APIFinal.Controllers
             }
             return Ok(item.Price);
         }
+        [HttpGet("getLifetimeByName/{itemName}")]
+        public ActionResult<int> GetLifetimeByName(string itemName)
+        {
+            var item = _dataContext.Items.FirstOrDefault(i => i.ItemName == itemName);
+            if (item == null)
+            {
+                return NotFound($"Item with name '{itemName}' not found.");
+            }
+            return Ok(item.LifeTime);
+        }
 
         [HttpPost]
         public void PostItem(Items item)

@@ -51,6 +51,17 @@ namespace APIFinal.Controllers
             return _dataContext.PAR.Select(i => i.ParID).ToList();
         }
 
+        [HttpGet("getparname/{parid}")]
+        public ActionResult<string> GetParName(string parid)
+        {
+            var par = _dataContext.PAR.FirstOrDefault(x => x.ParID == parid);
+            if (par == null)
+            {
+                return NotFound();
+            }
+            return Ok(par.ParName);
+        }
+
         [HttpPost]
         public void Post([FromBody] PAR par)
         {

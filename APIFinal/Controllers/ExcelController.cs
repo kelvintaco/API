@@ -9,6 +9,65 @@ namespace WebSystemMonitoring.Controllers
     [ApiController]
     public class ExcelController : ControllerBase
     {
+        public ExcelController()
+        {
+            // Ensure EPPlus license is set (non-commercial use)
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+        }
+
+        [HttpPost("generate-ics")]
+        public async Task<IActionResult> GenerateIcsExcel([FromBody] ICSData data)
+        {
+            if (data == null)
+            {
+                return BadRequest("Request body is null or invalid.");
+            }
+
+            Console.WriteLine($"Received ICS data: ICSID={data.ICSID}, ItemCode={data.ItemCode}, IcsDate={data.IcsDate}");
+
+            var templateFileName = "various-form.xlsx";
+            var existingFilePath = Path.Combine(Directory.GetCurrentDirectory(), "templates", templateFileName);
+
+            Console.WriteLine($"Looking for template at: {existingFilePath}");
+            if (!System.IO.File.Exists(existingFilePath))
+            {
+                return NotFound($"Template file not found at: {existingFilePath}");
+            }
+
+            var tempFileName = $"ICSData_{Guid.NewGuid().ToString("N")}.xlsx";
+            var tempFilePath = Path.Combine(Path.GetTempPath(), tempFileName);
+
+            using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
+            {
+                var worksheet = package.Workbook.Worksheets["ICS"];
+                if (worksheet == null)
+                {
+                    return BadRequest("Worksheet 'ICS' not found!");
+                }
+
+                // Map ICS data to specific cells (adjust cell addresses based on your template)
+                worksheet.Cells["J9"].Value = data.ICSID;          // ICS ID
+                worksheet.Cells["I13"].Value = data.ItemCode;       // Item Code
+                worksheet.Cells["B13"].Value = data.ItemCode;       // Item Code (duplicate for another cell)
+                worksheet.Cells["E13"].Value = data.Description;    // Description
+                //worksheet.Cells["D6"].Value = data.CSTCode;        // CST Code
+                worksheet.Cells["C8"].Value = data.ICSName;        // ICS Name
+                worksheet.Cells["C13"].Value = data.ICSPrice;       // Price
+                worksheet.Cells["J13"].Value = data.LifeTime;           // Estimated Life
+                worksheet.Cells["A13"].Value = data.Qty;            // Quantity
+                worksheet.Cells["C47"].Value = data.IcsDate.ToString("yyyy-MM-dd"); // Date
+                worksheet.Cells["H47"].Value = data.IcsDate.ToString("yyyy-MM-dd");
+                worksheet.Cells["G43"].Value = data.Position;        // Position
+
+                package.SaveAs(new FileInfo(tempFilePath));
+            }
+
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(tempFilePath);
+            System.IO.File.Delete(tempFilePath);
+
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "ICSData.xlsx");
+        }
+
         [HttpPost("generate-surrender")]
         public async Task<IActionResult> GenerateSurrenderExcel([FromBody] SurrenderData data)
         {
@@ -99,11 +158,15 @@ namespace WebSystemMonitoring.Controllers
 
                 worksheet.Cells["F6"].Value = data.ParID;
                 worksheet.Cells["E9"].Value = data.ItemCode;
+                worksheet.Cells["B9"].Value = data.ItemCode;
                 worksheet.Cells["C9"].Value = data.ItemName;
                 worksheet.Cells["E40"].Value = data.ParName;
                 worksheet.Cells["C36"].Value = data.ParDate;
+                worksheet.Cells["D9"].Value = data.ParDate;
                 worksheet.Cells["C35"].Value = data.RefNo;
                 worksheet.Cells["A9"].Value = data.ParQty;
+                worksheet.Cells["F9"].Value = data.value;
+                worksheet.Cells["D47"].Value = data.head;
 
                 if (data.IsClassification1) worksheet.Cells["A29"].Value = "/";
                 if (data.IsClassification2) worksheet.Cells["A30"].Value = "/";
@@ -111,10 +174,19 @@ namespace WebSystemMonitoring.Controllers
                 if (data.IsClassification4) worksheet.Cells["A32"].Value = "/";
                 if (data.IsClassification5) worksheet.Cells["A33"].Value = "/";
 
-                if (data.IsSourceOfFund1) worksheet.Cells["C2"].Value = "/";
-                if (data.IsSourceOfFund2) worksheet.Cells["C3"].Value = "/";
-                if (data.IsSourceOfFund3) worksheet.Cells["C4"].Value = "/";
-                if (data.IsSourceOfFund4) worksheet.Cells["C5"].Value = data.OtherSourceOfFund;
+                if (data.Copies1) worksheet.Cells["G33"].Value = "/";
+                if (data.Copies2) worksheet.Cells["G34"].Value = "/";
+                if (data.Copies3) worksheet.Cells["G35"].Value = "/";
+                if (data.Copies4) worksheet.Cells["G36"].Value = "/";
+
+                worksheet.Cells["D29"].Value = data.FundType.Contains("GF") ? "/" : "";
+                worksheet.Cells["D30"].Value = data.FundType.Contains("SEF") ? "/" : "";
+                worksheet.Cells["G29"].Value = data.FundType.Contains("Trust Fund") ? "/" : "";
+                worksheet.Cells["F30"].Value = data.FundType.Contains("Other") ? "/" : "";
+                if (data.FundType.Contains("Other"))
+                {
+                    worksheet.Cells["F30"].Value = data.FundType;
+                }
 
                 package.SaveAs(new FileInfo(tempFilePath));
             }
@@ -154,7 +226,7 @@ namespace WebSystemMonitoring.Controllers
                 {
                     return BadRequest("Worksheet 'Transfer' not found!");
                 }
-                //fix
+
                 worksheet.Cells["A2"].Value = data.FundCluster;
                 worksheet.Cells["B4"].Value = data.FromName;
                 worksheet.Cells["C4"].Value = data.ToName;
@@ -168,13 +240,13 @@ namespace WebSystemMonitoring.Controllers
                 worksheet.Cells["A8"].Value = data.TransferType;
                 worksheet.Cells["A10"].Value = data.ReasonForTransfer;
                 worksheet.Cells["B12"].Value = data.ApprovedBy;
-                worksheet.Cells["C12"].Value = data.ReleasedBy; 
-                worksheet.Cells["D12"].Value = data.Designation; 
+                worksheet.Cells["C12"].Value = data.ReleasedBy;
+                worksheet.Cells["D12"].Value = data.Designation;
                 worksheet.Cells["E12"].Value = data.PtrId;
 
                 worksheet.Cells["B8"].Value = data.TransferType.Contains("Donation") ? "Yes" : "No";
-                worksheet.Cells["C8"].Value = data.TransferType.Contains("Relocate") ? "Yes" : "No"; 
-                worksheet.Cells["D8"].Value = data.TransferType.Contains("Reassignment") ? "Yes" : "No"; 
+                worksheet.Cells["C8"].Value = data.TransferType.Contains("Relocate") ? "Yes" : "No";
+                worksheet.Cells["D8"].Value = data.TransferType.Contains("Reassignment") ? "Yes" : "No";
                 worksheet.Cells["E8"].Value = data.TransferType.Contains("Other") ? "Yes" : "No";
                 if (data.TransferType.Contains("Other"))
                 {
@@ -189,6 +261,21 @@ namespace WebSystemMonitoring.Controllers
 
             return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "TransferData.xlsx");
         }
+    }
+
+    // ICS Data Model
+    public class ICSData
+    {
+        public int ICSID { get; set; }
+        public int ItemCode { get; set; }
+        public string Description { get; set; }
+        public string CSTCode { get; set; }
+        public string ICSName { get; set; }
+        public double ICSPrice { get; set; }
+        public int LifeTime { get; set; }
+        public int Qty { get; set; }
+        public DateOnly IcsDate { get; set; }
+        public string Position { get; set; }
     }
 
     public class SurrenderData
@@ -231,11 +318,13 @@ namespace WebSystemMonitoring.Controllers
         public bool IsClassification3 { get; set; }
         public bool IsClassification4 { get; set; }
         public bool IsClassification5 { get; set; }
-        public bool IsSourceOfFund1 { get; set; }
-        public bool IsSourceOfFund2 { get; set; }
-        public bool IsSourceOfFund3 { get; set; }
-        public bool IsSourceOfFund4 { get; set; }
-        public string OtherSourceOfFund { get; set; }
+        public bool Copies1 { get; set; }
+        public bool Copies2 { get; set; }
+        public bool Copies3 { get; set; }
+        public bool Copies4 { get; set; }
+        public string FundType { get; set; }
+        public float value { get; set; }
+        public string? head { get; set; }
     }
 
     public class TransferData
