@@ -1,7 +1,14 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
+using System;
 using System.IO;
 using System.Threading.Tasks;
+using Spire.Xls; // Namespace for FreeSpire.XLS
+using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas;
+using iText.Kernel.Colors;
+using iText.Kernel.Pdf.Extgstate;
+using iText.Kernel.Exceptions; // For PdfException
 
 namespace WebSystemMonitoring.Controllers
 {
@@ -11,8 +18,8 @@ namespace WebSystemMonitoring.Controllers
     {
         public ExcelController()
         {
-            // Ensure EPPlus license is set (non-commercial use)
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            // Set EPPlus license context
+            ExcelPackage.License.SetNonCommercialOrganization("Local Government Unit");
         }
 
         [HttpPost("generate-ics")]
@@ -34,38 +41,193 @@ namespace WebSystemMonitoring.Controllers
                 return NotFound($"Template file not found at: {existingFilePath}");
             }
 
-            var tempFileName = $"ICSData_{Guid.NewGuid().ToString("N")}.xlsx";
-            var tempFilePath = Path.Combine(Path.GetTempPath(), tempFileName);
+            var tempExcelFileName = $"ICSData_{Guid.NewGuid().ToString("N")}.xlsx";
+            var tempExcelFilePath = Path.Combine(Path.GetTempPath(), tempExcelFileName);
+            var tempPdfFileName = $"ICSData_{Guid.NewGuid().ToString("N")}.pdf";
+            var tempPdfFilePath = Path.Combine(Path.GetTempPath(), tempPdfFileName);
+            var securedPdfFilePath = $"{tempPdfFilePath}_secured.pdf";
 
-            using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
+            try
             {
-                var worksheet = package.Workbook.Worksheets["ICS"];
-                if (worksheet == null)
+                // Step 1: Generate Excel file using EPPlus
+                using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
                 {
-                    return BadRequest("Worksheet 'ICS' not found!");
+                    var worksheet = package.Workbook.Worksheets["ICS"];
+                    if (worksheet == null)
+                    {
+                        return BadRequest("Worksheet 'ICS' not found!");
+                    }
+
+                    worksheet.Cells["J9"].Value = data.ICSID;
+                    worksheet.Cells["I13"].Value = data.ItemCode;
+                    worksheet.Cells["B13"].Value = data.ItemCode;
+                    worksheet.Cells["E13"].Value = data.Description;
+                    worksheet.Cells["C8"].Value = data.ICSName;
+                    worksheet.Cells["C13"].Value = data.ICSPrice;
+                    worksheet.Cells["J13"].Value = data.LifeTime;
+                    worksheet.Cells["A13"].Value = data.Qty;
+                    worksheet.Cells["C47"].Value = data.IcsDate.ToString("yyyy-MM-dd");
+                    worksheet.Cells["H47"].Value = data.IcsDate.ToString("yyyy-MM-dd");
+                    worksheet.Cells["G43"].Value = data.Position;
+
+                    package.SaveAs(new FileInfo(tempExcelFilePath));
                 }
 
-                // Map ICS data to specific cells (adjust cell addresses based on your template)
-                worksheet.Cells["J9"].Value = data.ICSID;          // ICS ID
-                worksheet.Cells["I13"].Value = data.ItemCode;       // Item Code
-                worksheet.Cells["B13"].Value = data.ItemCode;       // Item Code (duplicate for another cell)
-                worksheet.Cells["E13"].Value = data.Description;    // Description
-                //worksheet.Cells["D6"].Value = data.CSTCode;        // CST Code
-                worksheet.Cells["C8"].Value = data.ICSName;        // ICS Name
-                worksheet.Cells["C13"].Value = data.ICSPrice;       // Price
-                worksheet.Cells["J13"].Value = data.LifeTime;           // Estimated Life
-                worksheet.Cells["A13"].Value = data.Qty;            // Quantity
-                worksheet.Cells["C47"].Value = data.IcsDate.ToString("yyyy-MM-dd"); // Date
-                worksheet.Cells["H47"].Value = data.IcsDate.ToString("yyyy-MM-dd");
-                worksheet.Cells["G43"].Value = data.Position;        // Position
+                // Validate Excel output
+                if (!System.IO.File.Exists(tempExcelFilePath) || new FileInfo(tempExcelFilePath).Length == 0)
+                {
+                    throw new Exception("EPPlus failed to generate a valid Excel file.");
+                }
+                try
+                {
+                    using (var package = new ExcelPackage(new FileInfo(tempExcelFilePath)))
+                    {
+                        if (package.Workbook.Worksheets.Count == 0)
+                        {
+                            throw new Exception("Generated Excel file is invalid or empty.");
+                        }
+                        Console.WriteLine($"Excel file validated: {tempExcelFilePath}, Worksheets: {package.Workbook.Worksheets.Count}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Generated Excel file is corrupted: {ex.Message}", ex);
+                }
 
-                package.SaveAs(new FileInfo(tempFilePath));
+                // Step 2: Convert Excel to PDF using FreeSpire.XLS
+                try
+                {
+                    using (var workbook = new Workbook())
+                    {
+                        workbook.LoadFromFile(tempExcelFilePath);
+                        Console.WriteLine($"FreeSpire.XLS loaded Excel: {tempExcelFilePath}");
+                        workbook.SaveToFile(tempPdfFilePath, FileFormat.PDF);
+                        Console.WriteLine($"FreeSpire.XLS saved PDF: {tempPdfFilePath}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"FreeSpire.XLS failed to convert Excel to PDF: {ex.Message}", ex);
+                }
+
+                // Validate FreeSpire.XLS output
+                if (!System.IO.File.Exists(tempPdfFilePath) || new FileInfo(tempPdfFilePath).Length == 0)
+                {
+                    throw new Exception("FreeSpire.XLS failed to generate a valid PDF file.");
+                }
+                try
+                {
+                    using (var pdfReader = new PdfReader(tempPdfFilePath))
+                    {
+                        using (var pdfDoc = new PdfDocument(pdfReader))
+                        {
+                            if (pdfDoc.GetNumberOfPages() == 0)
+                            {
+                                throw new Exception("FreeSpire.XLS generated an empty or invalid PDF.");
+                            }
+                            Console.WriteLine($"PDF file validated: {tempPdfFilePath}, Pages: {pdfDoc.GetNumberOfPages()}");
+                        }
+                    }
+                }
+                catch (PdfException ex)
+                {
+                    throw new Exception($"FreeSpire.XLS generated a corrupted PDF: {ex.Message}", ex);
+                }
+
+                // Step 3: Use iText to add metadata and watermark
+                using (var pdfReader = new PdfReader(tempPdfFilePath))
+                using (var pdfWriter = new PdfWriter(new FileStream(securedPdfFilePath, FileMode.Create, FileAccess.Write)))
+                using (var pdfDoc = new PdfDocument(pdfReader, pdfWriter))
+                {
+                    // Step 3.1: Add metadata
+                    try
+                    {
+                        var info = pdfDoc.GetDocumentInfo();
+                        info.SetTitle("ICS Document");
+                        info.SetAuthor("WebSystemMonitoring");
+                        info.SetCreator("WebSystemMonitoring App");
+                        info.SetSubject("ICS Data Report");
+                        info.SetKeywords("ICS, Secure, Confidential");
+                        Console.WriteLine("PDF metadata set successfully.");
+                    }
+                    catch (PdfException ex)
+                    {
+                        throw new Exception($"Failed to set PDF metadata: {ex.Message}", ex);
+                    }
+
+                    // Step 3.2: Add watermark
+                    try
+                    {
+                        for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
+                        {
+                            var page = pdfDoc.GetPage(i);
+                            if (page == null) continue;
+
+                            var canvas = new PdfCanvas(page);
+                            canvas.SaveState();
+
+                            canvas.SetFillColor(new DeviceRgb(200, 200, 200));
+                            var transparency = new PdfExtGState().SetFillOpacity(0.3f);
+                            canvas.SetExtGState(transparency);
+
+                            try
+                            {
+                                var font = iText.Kernel.Font.PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+                                canvas.BeginText()
+                                    .SetFontAndSize(font, 50)
+                                    .MoveText(100, 400)
+                                    .ShowText($"CONFIDENTIAL - ICS {data.ICSID}")
+                                    .EndText();
+                            }
+                            catch (PdfException ex)
+                            {
+                                Console.WriteLine($"Warning: Failed to apply watermark on page {i}: {ex.Message}");
+                            }
+
+                            canvas.RestoreState();
+                        }
+                        Console.WriteLine("PDF watermark applied successfully.");
+                    }
+                    catch (PdfException ex)
+                    {
+                        throw new Exception($"Failed to add watermark to PDF: {ex.Message}", ex);
+                    }
+                }
+
+                // Step 4: Return the secured PDF
+                if (!System.IO.File.Exists(securedPdfFilePath) || new FileInfo(securedPdfFilePath).Length == 0)
+                {
+                    throw new Exception("Failed to generate the final PDF file.");
+                }
+
+                var fileBytes = await System.IO.File.ReadAllBytesAsync(securedPdfFilePath);
+                Console.WriteLine($"Returning PDF: {securedPdfFilePath}, Size: {fileBytes.Length} bytes");
+                return File(fileBytes, "application/pdf", "ICSData.pdf");
             }
-
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(tempFilePath);
-            System.IO.File.Delete(tempFilePath);
-
-            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "ICSData.xlsx");
+            catch (PdfException ex)
+            {
+                Console.WriteLine($"PdfException in GenerateIcsExcel: {ex.Message}\nStackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}\nInner StackTrace: {ex.InnerException.StackTrace}");
+                }
+                return StatusCode(500, $"PDF processing error: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GenerateIcsExcel: {ex.Message}\nStackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}\nInner StackTrace: {ex.InnerException.StackTrace}");
+                }
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+            finally
+            {
+                TryDeleteFile(tempExcelFilePath);
+                TryDeleteFile(tempPdfFilePath);
+                TryDeleteFile(securedPdfFilePath);
+            }
         }
 
         [HttpPost("generate-surrender")]
@@ -76,7 +238,7 @@ namespace WebSystemMonitoring.Controllers
                 return BadRequest("Request body is null or invalid.");
             }
 
-            Console.WriteLine($"Received data: Quantity={data.Quantity}, ItemCode={data.ItemCode}, ParDate={data.ParDate}");
+            Console.WriteLine($"Received Surrender data: Quantity={data.Quantity}, ItemCode={data.ItemCode}, ParDate={data.ParDate}");
 
             var templateFileName = "various-form.xlsx";
             var existingFilePath = Path.Combine(Directory.GetCurrentDirectory(), "templates", templateFileName);
@@ -87,43 +249,200 @@ namespace WebSystemMonitoring.Controllers
                 return NotFound($"Template file not found at: {existingFilePath}");
             }
 
-            var tempFileName = $"surrenderData_{Guid.NewGuid().ToString("N")}.xlsx";
-            var tempFilePath = Path.Combine(Path.GetTempPath(), tempFileName);
+            var tempExcelFileName = $"SurrenderData_{Guid.NewGuid().ToString("N")}.xlsx";
+            var tempExcelFilePath = Path.Combine(Path.GetTempPath(), tempExcelFileName);
+            var tempPdfFileName = $"SurrenderData_{Guid.NewGuid().ToString("N")}.pdf";
+            var tempPdfFilePath = Path.Combine(Path.GetTempPath(), tempPdfFileName);
+            var securedPdfFilePath = $"{tempPdfFilePath}_secured.pdf";
 
-            using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
+            try
             {
-                var worksheet = package.Workbook.Worksheets["surrender"];
-                if (worksheet == null)
+                // Step 1: Generate Excel file using EPPlus
+                using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
                 {
-                    return BadRequest("Worksheet 'surrender' not found!");
+                    var worksheet = package.Workbook.Worksheets["surrender"];
+                    if (worksheet == null)
+                    {
+                        return BadRequest("Worksheet 'surrender' not found!");
+                    }
+
+                    worksheet.Cells["A9"].Value = data.Quantity;
+                    worksheet.Cells["B9"].Value = data.ItemCode;
+                    worksheet.Cells["C9"].Value = data.ItemName;
+                    worksheet.Cells["D9"].Value = data.ParDate.ToString("yyyy-MM-dd");
+                    worksheet.Cells["E9"].Value = data.ParID;
+                    worksheet.Cells["F9"].Value = data.Value;
+                    worksheet.Cells["G9"].Value = data.Price;
+                    worksheet.Cells["A35"].Value = data.ParName;
+                    worksheet.Cells["A40"].Value = data.Condition;
+
+                    if (data.IsClassification1) worksheet.Cells["A25"].Value = "/";
+                    if (data.IsClassification2) worksheet.Cells["A26"].Value = "/";
+                    if (data.IsClassification3) worksheet.Cells["A27"].Value = "/";
+                    if (data.IsClassification4) worksheet.Cells["A28"].Value = "/";
+                    if (data.IsClassification5) worksheet.Cells["A29"].Value = "/";
+
+                    if (data.CopiesEndUser) worksheet.Cells["G25"].Value = "/";
+                    if (data.CopiesGSO) worksheet.Cells["G26"].Value = "/";
+
+                    package.SaveAs(new FileInfo(tempExcelFilePath));
                 }
 
-                worksheet.Cells["A9"].Value = data.Quantity;
-                worksheet.Cells["B9"].Value = data.ItemCode;
-                worksheet.Cells["C9"].Value = data.ItemName;
-                worksheet.Cells["D9"].Value = data.ParDate;
-                worksheet.Cells["E9"].Value = data.ParID;
-                worksheet.Cells["F9"].Value = data.Value;
-                worksheet.Cells["G9"].Value = data.Price;
-                worksheet.Cells["A35"].Value = data.ParName;
-                worksheet.Cells["A40"].Value = data.Condition;
+                // Validate Excel output
+                if (!System.IO.File.Exists(tempExcelFilePath) || new FileInfo(tempExcelFilePath).Length == 0)
+                {
+                    throw new Exception("EPPlus failed to generate a valid Excel file.");
+                }
+                try
+                {
+                    using (var package = new ExcelPackage(new FileInfo(tempExcelFilePath)))
+                    {
+                        if (package.Workbook.Worksheets.Count == 0)
+                        {
+                            throw new Exception("Generated Excel file is invalid or empty.");
+                        }
+                        Console.WriteLine($"Excel file validated: {tempExcelFilePath}, Worksheets: {package.Workbook.Worksheets.Count}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Generated Excel file is corrupted: {ex.Message}", ex);
+                }
 
-                if (data.IsClassification1) worksheet.Cells["A25"].Value = "/";
-                if (data.IsClassification2) worksheet.Cells["A26"].Value = "/";
-                if (data.IsClassification3) worksheet.Cells["A27"].Value = "/";
-                if (data.IsClassification4) worksheet.Cells["A28"].Value = "/";
-                if (data.IsClassification5) worksheet.Cells["A29"].Value = "/";
+                // Step 2: Convert Excel to PDF using FreeSpire.XLS
+                try
+                {
+                    using (var workbook = new Workbook())
+                    {
+                        workbook.LoadFromFile(tempExcelFilePath);
+                        Console.WriteLine($"FreeSpire.XLS loaded Excel: {tempExcelFilePath}");
+                        workbook.SaveToFile(tempPdfFilePath, FileFormat.PDF);
+                        Console.WriteLine($"FreeSpire.XLS saved PDF: {tempPdfFilePath}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"FreeSpire.XLS failed to convert Excel to PDF: {ex.Message}", ex);
+                }
 
-                if (data.CopiesEndUser) worksheet.Cells["G25"].Value = "/";
-                if (data.CopiesGSO) worksheet.Cells["G26"].Value = "/";
+                // Validate FreeSpire.XLS output
+                if (!System.IO.File.Exists(tempPdfFilePath) || new FileInfo(tempPdfFilePath).Length == 0)
+                {
+                    throw new Exception("FreeSpire.XLS failed to generate a valid PDF file.");
+                }
+                try
+                {
+                    using (var pdfReader = new PdfReader(tempPdfFilePath))
+                    {
+                        using (var pdfDoc = new PdfDocument(pdfReader))
+                        {
+                            if (pdfDoc.GetNumberOfPages() == 0)
+                            {
+                                throw new Exception("FreeSpire.XLS generated an empty or invalid PDF.");
+                            }
+                            Console.WriteLine($"PDF file validated: {tempPdfFilePath}, Pages: {pdfDoc.GetNumberOfPages()}");
+                        }
+                    }
+                }
+                catch (PdfException ex)
+                {
+                    throw new Exception($"FreeSpire.XLS generated a corrupted PDF: {ex.Message}", ex);
+                }
 
-                package.SaveAs(new FileInfo(tempFilePath));
+                // Step 3: Use iText to add metadata and watermark
+                using (var pdfReader = new PdfReader(tempPdfFilePath))
+                using (var pdfWriter = new PdfWriter(new FileStream(securedPdfFilePath, FileMode.Create, FileAccess.Write)))
+                using (var pdfDoc = new PdfDocument(pdfReader, pdfWriter))
+                {
+                    // Step 3.1: Add metadata
+                    try
+                    {
+                        var info = pdfDoc.GetDocumentInfo();
+                        info.SetTitle("Surrender Document");
+                        info.SetAuthor("WebSystemMonitoring");
+                        info.SetCreator("WebSystemMonitoring App");
+                        info.SetSubject("Surrender Data Report");
+                        info.SetKeywords("Surrender, Secure, Confidential");
+                        Console.WriteLine("PDF metadata set successfully.");
+                    }
+                    catch (PdfException ex)
+                    {
+                        throw new Exception($"Failed to set PDF metadata: {ex.Message}", ex);
+                    }
+
+                    // Step 3.2: Add watermark
+                    try
+                    {
+                        for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
+                        {
+                            var page = pdfDoc.GetPage(i);
+                            if (page == null) continue;
+
+                            var canvas = new PdfCanvas(page);
+                            canvas.SaveState();
+
+                            canvas.SetFillColor(new DeviceRgb(200, 200, 200));
+                            var transparency = new PdfExtGState().SetFillOpacity(0.3f);
+                            canvas.SetExtGState(transparency);
+
+                            try
+                            {
+                                var font = iText.Kernel.Font.PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+                                canvas.BeginText()
+                                    .SetFontAndSize(font, 50)
+                                    .MoveText(100, 400)
+                                    .ShowText($"CONFIDENTIAL - Surrender {data.ParID}")
+                                    .EndText();
+                            }
+                            catch (PdfException ex)
+                            {
+                                Console.WriteLine($"Warning: Failed to apply watermark on page {i}: {ex.Message}");
+                            }
+
+                            canvas.RestoreState();
+                        }
+                        Console.WriteLine("PDF watermark applied successfully.");
+                    }
+                    catch (PdfException ex)
+                    {
+                        throw new Exception($"Failed to add watermark to PDF: {ex.Message}", ex);
+                    }
+                }
+
+                // Step 4: Return the secured PDF
+                if (!System.IO.File.Exists(securedPdfFilePath) || new FileInfo(securedPdfFilePath).Length == 0)
+                {
+                    throw new Exception("Failed to generate the final PDF file.");
+                }
+
+                var fileBytes = await System.IO.File.ReadAllBytesAsync(securedPdfFilePath);
+                Console.WriteLine($"Returning PDF: {securedPdfFilePath}, Size: {fileBytes.Length} bytes");
+                return File(fileBytes, "application/pdf", "SurrenderData.pdf");
             }
-
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(tempFilePath);
-            System.IO.File.Delete(tempFilePath);
-
-            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "surrenderData.xlsx");
+            catch (PdfException ex)
+            {
+                Console.WriteLine($"PdfException in GenerateSurrenderExcel: {ex.Message}\nStackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}\nInner StackTrace: {ex.InnerException.StackTrace}");
+                }
+                return StatusCode(500, $"PDF processing error: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GenerateSurrenderExcel: {ex.Message}\nStackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}\nInner StackTrace: {ex.InnerException.StackTrace}");
+                }
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+            finally
+            {
+                TryDeleteFile(tempExcelFilePath);
+                TryDeleteFile(tempPdfFilePath);
+                TryDeleteFile(securedPdfFilePath);
+            }
         }
 
         [HttpPost("generate-par")]
@@ -145,56 +464,213 @@ namespace WebSystemMonitoring.Controllers
                 return NotFound($"Template file not found at: {existingFilePath}");
             }
 
-            var tempFileName = $"PARData_{Guid.NewGuid().ToString("N")}.xlsx";
-            var tempFilePath = Path.Combine(Path.GetTempPath(), tempFileName);
+            var tempExcelFileName = $"PARData_{Guid.NewGuid().ToString("N")}.xlsx";
+            var tempExcelFilePath = Path.Combine(Path.GetTempPath(), tempExcelFileName);
+            var tempPdfFileName = $"PARData_{Guid.NewGuid().ToString("N")}.pdf";
+            var tempPdfFilePath = Path.Combine(Path.GetTempPath(), tempPdfFileName);
+            var securedPdfFilePath = $"{tempPdfFilePath}_secured.pdf";
 
-            using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
+            try
             {
-                var worksheet = package.Workbook.Worksheets["PAR"];
-                if (worksheet == null)
+                // Step 1: Generate Excel file using EPPlus
+                using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
                 {
-                    return BadRequest("Worksheet 'PAR' not found!");
+                    var worksheet = package.Workbook.Worksheets["PAR"];
+                    if (worksheet == null)
+                    {
+                        return BadRequest("Worksheet 'PAR' not found!");
+                    }
+
+                    worksheet.Cells["F6"].Value = data.ParID;
+                    worksheet.Cells["E9"].Value = data.ItemCode;
+                    worksheet.Cells["B9"].Value = data.ItemCode;
+                    worksheet.Cells["C9"].Value = data.ItemName;
+                    worksheet.Cells["E40"].Value = data.ParName;
+                    worksheet.Cells["C36"].Value = data.ParDate.ToString("yyyy-MM-dd");
+                    worksheet.Cells["D9"].Value = data.ParDate.ToString("yyyy-MM-dd");
+                    worksheet.Cells["C35"].Value = data.RefNo;
+                    worksheet.Cells["A9"].Value = data.ParQty;
+                    worksheet.Cells["F9"].Value = data.value;
+                    worksheet.Cells["D47"].Value = data.head;
+
+                    if (data.IsClassification1) worksheet.Cells["A29"].Value = "/";
+                    if (data.IsClassification2) worksheet.Cells["A30"].Value = "/";
+                    if (data.IsClassification3) worksheet.Cells["A31"].Value = "/";
+                    if (data.IsClassification4) worksheet.Cells["A32"].Value = "/";
+                    if (data.IsClassification5) worksheet.Cells["A33"].Value = "/";
+
+                    if (data.Copies1) worksheet.Cells["G33"].Value = "/";
+                    if (data.Copies2) worksheet.Cells["G34"].Value = "/";
+                    if (data.Copies3) worksheet.Cells["G35"].Value = "/";
+                    if (data.Copies4) worksheet.Cells["G36"].Value = "/";
+
+                    worksheet.Cells["D29"].Value = data.FundType.Contains("GF") ? "/" : "";
+                    worksheet.Cells["D30"].Value = data.FundType.Contains("SEF") ? "/" : "";
+                    worksheet.Cells["G29"].Value = data.FundType.Contains("Trust Fund") ? "/" : "";
+                    worksheet.Cells["F30"].Value = data.FundType.Contains("Other") ? "/" : "";
+                    if (data.FundType.Contains("Other"))
+                    {
+                        worksheet.Cells["F30"].Value = data.FundType;
+                    }
+
+                    package.SaveAs(new FileInfo(tempExcelFilePath));
                 }
 
-                worksheet.Cells["F6"].Value = data.ParID;
-                worksheet.Cells["E9"].Value = data.ItemCode;
-                worksheet.Cells["B9"].Value = data.ItemCode;
-                worksheet.Cells["C9"].Value = data.ItemName;
-                worksheet.Cells["E40"].Value = data.ParName;
-                worksheet.Cells["C36"].Value = data.ParDate;
-                worksheet.Cells["D9"].Value = data.ParDate;
-                worksheet.Cells["C35"].Value = data.RefNo;
-                worksheet.Cells["A9"].Value = data.ParQty;
-                worksheet.Cells["F9"].Value = data.value;
-                worksheet.Cells["D47"].Value = data.head;
-
-                if (data.IsClassification1) worksheet.Cells["A29"].Value = "/";
-                if (data.IsClassification2) worksheet.Cells["A30"].Value = "/";
-                if (data.IsClassification3) worksheet.Cells["A31"].Value = "/";
-                if (data.IsClassification4) worksheet.Cells["A32"].Value = "/";
-                if (data.IsClassification5) worksheet.Cells["A33"].Value = "/";
-
-                if (data.Copies1) worksheet.Cells["G33"].Value = "/";
-                if (data.Copies2) worksheet.Cells["G34"].Value = "/";
-                if (data.Copies3) worksheet.Cells["G35"].Value = "/";
-                if (data.Copies4) worksheet.Cells["G36"].Value = "/";
-
-                worksheet.Cells["D29"].Value = data.FundType.Contains("GF") ? "/" : "";
-                worksheet.Cells["D30"].Value = data.FundType.Contains("SEF") ? "/" : "";
-                worksheet.Cells["G29"].Value = data.FundType.Contains("Trust Fund") ? "/" : "";
-                worksheet.Cells["F30"].Value = data.FundType.Contains("Other") ? "/" : "";
-                if (data.FundType.Contains("Other"))
+                // Validate Excel output
+                if (!System.IO.File.Exists(tempExcelFilePath) || new FileInfo(tempExcelFilePath).Length == 0)
                 {
-                    worksheet.Cells["F30"].Value = data.FundType;
+                    throw new Exception("EPPlus failed to generate a valid Excel file.");
+                }
+                try
+                {
+                    using (var package = new ExcelPackage(new FileInfo(tempExcelFilePath)))
+                    {
+                        if (package.Workbook.Worksheets.Count == 0)
+                        {
+                            throw new Exception("Generated Excel file is invalid or empty.");
+                        }
+                        Console.WriteLine($"Excel file validated: {tempExcelFilePath}, Worksheets: {package.Workbook.Worksheets.Count}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Generated Excel file is corrupted: {ex.Message}", ex);
                 }
 
-                package.SaveAs(new FileInfo(tempFilePath));
+                // Step 2: Convert Excel to PDF using FreeSpire.XLS
+                try
+                {
+                    using (var workbook = new Workbook())
+                    {
+                        workbook.LoadFromFile(tempExcelFilePath);
+                        Console.WriteLine($"FreeSpire.XLS loaded Excel: {tempExcelFilePath}");
+                        workbook.SaveToFile(tempPdfFilePath, FileFormat.PDF);
+                        Console.WriteLine($"FreeSpire.XLS saved PDF: {tempPdfFilePath}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"FreeSpire.XLS failed to convert Excel to PDF: {ex.Message}", ex);
+                }
+
+                // Validate FreeSpire.XLS output
+                if (!System.IO.File.Exists(tempPdfFilePath) || new FileInfo(tempPdfFilePath).Length == 0)
+                {
+                    throw new Exception("FreeSpire.XLS failed to generate a valid PDF file.");
+                }
+                try
+                {
+                    using (var pdfReader = new PdfReader(tempPdfFilePath))
+                    {
+                        using (var pdfDoc = new PdfDocument(pdfReader))
+                        {
+                            if (pdfDoc.GetNumberOfPages() == 0)
+                            {
+                                throw new Exception("FreeSpire.XLS generated an empty or invalid PDF.");
+                            }
+                            Console.WriteLine($"PDF file validated: {tempPdfFilePath}, Pages: {pdfDoc.GetNumberOfPages()}");
+                        }
+                    }
+                }
+                catch (PdfException ex)
+                {
+                    throw new Exception($"FreeSpire.XLS generated a corrupted PDF: {ex.Message}", ex);
+                }
+
+                // Step 3: Use iText to add metadata and watermark
+                using (var pdfReader = new PdfReader(tempPdfFilePath))
+                using (var pdfWriter = new PdfWriter(new FileStream(securedPdfFilePath, FileMode.Create, FileAccess.Write)))
+                using (var pdfDoc = new PdfDocument(pdfReader, pdfWriter))
+                {
+                    // Step 3.1: Add metadata
+                    try
+                    {
+                        var info = pdfDoc.GetDocumentInfo();
+                        info.SetTitle("PAR Document");
+                        info.SetAuthor("WebSystemMonitoring");
+                        info.SetCreator("WebSystemMonitoring App");
+                        info.SetSubject("PAR Data Report");
+                        info.SetKeywords("PAR, Secure, Confidential");
+                        Console.WriteLine("PDF metadata set successfully.");
+                    }
+                    catch (PdfException ex)
+                    {
+                        throw new Exception($"Failed to set PDF metadata: {ex.Message}", ex);
+                    }
+
+                    // Step 3.2: Add watermark
+                    try
+                    {
+                        for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
+                        {
+                            var page = pdfDoc.GetPage(i);
+                            if (page == null) continue;
+
+                            var canvas = new PdfCanvas(page);
+                            canvas.SaveState();
+
+                            canvas.SetFillColor(new DeviceRgb(200, 200, 200));
+                            var transparency = new PdfExtGState().SetFillOpacity(0.3f);
+                            canvas.SetExtGState(transparency);
+
+                            try
+                            {
+                                var font = iText.Kernel.Font.PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+                                canvas.BeginText()
+                                    .SetFontAndSize(font, 50)
+                                    .MoveText(100, 400)
+                                    .ShowText($"CONFIDENTIAL - PAR {data.ParID}")
+                                    .EndText();
+                            }
+                            catch (PdfException ex)
+                            {
+                                Console.WriteLine($"Warning: Failed to apply watermark on page {i}: {ex.Message}");
+                            }
+
+                            canvas.RestoreState();
+                        }
+                        Console.WriteLine("PDF watermark applied successfully.");
+                    }
+                    catch (PdfException ex)
+                    {
+                        throw new Exception($"Failed to add watermark to PDF: {ex.Message}", ex);
+                    }
+                }
+
+                // Step 4: Return the secured PDF
+                if (!System.IO.File.Exists(securedPdfFilePath) || new FileInfo(securedPdfFilePath).Length == 0)
+                {
+                    throw new Exception("Failed to generate the final PDF file.");
+                }
+
+                var fileBytes = await System.IO.File.ReadAllBytesAsync(securedPdfFilePath);
+                Console.WriteLine($"Returning PDF: {securedPdfFilePath}, Size: {fileBytes.Length} bytes");
+                return File(fileBytes, "application/pdf", "PARData.pdf");
             }
-
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(tempFilePath);
-            System.IO.File.Delete(tempFilePath);
-
-            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "PARData.xlsx");
+            catch (PdfException ex)
+            {
+                Console.WriteLine($"PdfException in GenerateParExcel: {ex.Message}\nStackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}\nInner StackTrace: {ex.InnerException.StackTrace}");
+                }
+                return StatusCode(500, $"PDF processing error: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GenerateParExcel: {ex.Message}\nStackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}\nInner StackTrace: {ex.InnerException.StackTrace}");
+                }
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+            finally
+            {
+                TryDeleteFile(tempExcelFilePath);
+                TryDeleteFile(tempPdfFilePath);
+                TryDeleteFile(securedPdfFilePath);
+            }
         }
 
         [HttpPost("generate-transfer")]
@@ -216,50 +692,238 @@ namespace WebSystemMonitoring.Controllers
                 return NotFound($"Template file not found at: {existingFilePath}");
             }
 
-            var tempFileName = $"TransferData_{Guid.NewGuid().ToString("N")}.xlsx";
-            var tempFilePath = Path.Combine(Path.GetTempPath(), tempFileName);
+            var tempExcelFileName = $"TransferData_{Guid.NewGuid().ToString("N")}.xlsx";
+            var tempExcelFilePath = Path.Combine(Path.GetTempPath(), tempExcelFileName);
+            var tempPdfFileName = $"TransferData_{Guid.NewGuid().ToString("N")}.pdf";
+            var tempPdfFilePath = Path.Combine(Path.GetTempPath(), tempPdfFileName);
+            var securedPdfFilePath = $"{tempPdfFilePath}_secured.pdf";
 
-            using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
+            try
             {
-                var worksheet = package.Workbook.Worksheets["Transfer"];
-                if (worksheet == null)
+                // Step 1: Generate Excel file using EPPlus
+                using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
                 {
-                    return BadRequest("Worksheet 'Transfer' not found!");
+                    var worksheet = package.Workbook.Worksheets["Transfer"];
+                    if (worksheet == null)
+                    {
+                        return BadRequest("Worksheet 'Transfer' not found!");
+                    }
+
+                    worksheet.Cells["A2"].Value = data.FundCluster;
+                    worksheet.Cells["B4"].Value = data.FromName;
+                    worksheet.Cells["C4"].Value = data.ToName;
+                    worksheet.Cells["D6"].Value = data.ItemCode;
+                    worksheet.Cells["E6"].Value = data.Description;
+                    worksheet.Cells["F6"].Value = data.CstCode;
+                    worksheet.Cells["G6"].Value = data.Name;
+                    worksheet.Cells["H6"].Value = data.DateTransferred.ToString("yyyy-MM-dd");
+                    worksheet.Cells["I6"].Value = data.Condition;
+                    worksheet.Cells["J6"].Value = data.ReceiveName;
+                    worksheet.Cells["A8"].Value = data.TransferType;
+                    worksheet.Cells["A10"].Value = data.ReasonForTransfer;
+                    worksheet.Cells["B12"].Value = data.ApprovedBy;
+                    worksheet.Cells["C12"].Value = data.ReleasedBy;
+                    worksheet.Cells["D12"].Value = data.Designation;
+                    worksheet.Cells["E12"].Value = data.PtrId;
+
+                    worksheet.Cells["B8"].Value = data.TransferType.Contains("Donation") ? "Yes" : "No";
+                    worksheet.Cells["C8"].Value = data.TransferType.Contains("Relocate") ? "Yes" : "No";
+                    worksheet.Cells["D8"].Value = data.TransferType.Contains("Reassignment") ? "Yes" : "No";
+                    worksheet.Cells["E8"].Value = data.TransferType.Contains("Other") ? "Yes" : "No";
+                    if (data.TransferType.Contains("Other"))
+                    {
+                        worksheet.Cells["F8"].Value = data.TransferType;
+                    }
+
+                    package.SaveAs(new FileInfo(tempExcelFilePath));
                 }
 
-                worksheet.Cells["A2"].Value = data.FundCluster;
-                worksheet.Cells["B4"].Value = data.FromName;
-                worksheet.Cells["C4"].Value = data.ToName;
-                worksheet.Cells["D6"].Value = data.ItemCode;
-                worksheet.Cells["E6"].Value = data.Description;
-                worksheet.Cells["F6"].Value = data.CstCode;
-                worksheet.Cells["G6"].Value = data.Name;
-                worksheet.Cells["H6"].Value = data.DateTransferred.ToString("yyyy-MM-dd");
-                worksheet.Cells["I6"].Value = data.Condition;
-                worksheet.Cells["J6"].Value = data.ReceiveName;
-                worksheet.Cells["A8"].Value = data.TransferType;
-                worksheet.Cells["A10"].Value = data.ReasonForTransfer;
-                worksheet.Cells["B12"].Value = data.ApprovedBy;
-                worksheet.Cells["C12"].Value = data.ReleasedBy;
-                worksheet.Cells["D12"].Value = data.Designation;
-                worksheet.Cells["E12"].Value = data.PtrId;
-
-                worksheet.Cells["B8"].Value = data.TransferType.Contains("Donation") ? "Yes" : "No";
-                worksheet.Cells["C8"].Value = data.TransferType.Contains("Relocate") ? "Yes" : "No";
-                worksheet.Cells["D8"].Value = data.TransferType.Contains("Reassignment") ? "Yes" : "No";
-                worksheet.Cells["E8"].Value = data.TransferType.Contains("Other") ? "Yes" : "No";
-                if (data.TransferType.Contains("Other"))
+                // Validate Excel output
+                if (!System.IO.File.Exists(tempExcelFilePath) || new FileInfo(tempExcelFilePath).Length == 0)
                 {
-                    worksheet.Cells["F8"].Value = data.TransferType;
+                    throw new Exception("EPPlus failed to generate a valid Excel file.");
+                }
+                try
+                {
+                    using (var package = new ExcelPackage(new FileInfo(tempExcelFilePath)))
+                    {
+                        if (package.Workbook.Worksheets.Count == 0)
+                        {
+                            throw new Exception("Generated Excel file is invalid or empty.");
+                        }
+                        Console.WriteLine($"Excel file validated: {tempExcelFilePath}, Worksheets: {package.Workbook.Worksheets.Count}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Generated Excel file is corrupted: {ex.Message}", ex);
                 }
 
-                package.SaveAs(new FileInfo(tempFilePath));
+                // Step 2: Convert Excel to PDF using FreeSpire.XLS
+                try
+                {
+                    using (var workbook = new Workbook())
+                    {
+                        workbook.LoadFromFile(tempExcelFilePath);
+                        Console.WriteLine($"FreeSpire.XLS loaded Excel: {tempExcelFilePath}");
+                        workbook.SaveToFile(tempPdfFilePath, FileFormat.PDF);
+                        Console.WriteLine($"FreeSpire.XLS saved PDF: {tempPdfFilePath}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"FreeSpire.XLS failed to convert Excel to PDF: {ex.Message}", ex);
+                }
+
+                // Validate FreeSpire.XLS output
+                if (!System.IO.File.Exists(tempPdfFilePath) || new FileInfo(tempPdfFilePath).Length == 0)
+                {
+                    throw new Exception("FreeSpire.XLS failed to generate a valid PDF file.");
+                }
+                try
+                {
+                    using (var pdfReader = new PdfReader(tempPdfFilePath))
+                    {
+                        using (var pdfDoc = new PdfDocument(pdfReader))
+                        {
+                            if (pdfDoc.GetNumberOfPages() == 0)
+                            {
+                                throw new Exception("FreeSpire.XLS generated an empty or invalid PDF.");
+                            }
+                            Console.WriteLine($"PDF file validated: {tempPdfFilePath}, Pages: {pdfDoc.GetNumberOfPages()}");
+                        }
+                    }
+                }
+                catch (PdfException ex)
+                {
+                    throw new Exception($"FreeSpire.XLS generated a corrupted PDF: {ex.Message}", ex);
+                }
+
+                // Step 3: Use iText to add metadata and watermark
+                using (var pdfReader = new PdfReader(tempPdfFilePath))
+                using (var pdfWriter = new PdfWriter(new FileStream(securedPdfFilePath, FileMode.Create, FileAccess.Write)))
+                using (var pdfDoc = new PdfDocument(pdfReader, pdfWriter))
+                {
+                    // Step 3.1: Add metadata
+                    try
+                    {
+                        var info = pdfDoc.GetDocumentInfo();
+                        info.SetTitle("Transfer Document");
+                        info.SetAuthor("WebSystemMonitoring");
+                        info.SetCreator("WebSystemMonitoring App");
+                        info.SetSubject("Transfer Data Report");
+                        info.SetKeywords("Transfer, Secure, Confidential");
+                        Console.WriteLine("PDF metadata set successfully.");
+                    }
+                    catch (PdfException ex)
+                    {
+                        throw new Exception($"Failed to set PDF metadata: {ex.Message}", ex);
+                    }
+
+                    // Step 3.2: Add watermark
+                    try
+                    {
+                        for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
+                        {
+                            var page = pdfDoc.GetPage(i);
+                            if (page == null) continue;
+
+                            var canvas = new PdfCanvas(page);
+                            canvas.SaveState();
+
+                            canvas.SetFillColor(new DeviceRgb(200, 200, 200));
+                            var transparency = new PdfExtGState().SetFillOpacity(0.3f);
+                            canvas.SetExtGState(transparency);
+
+                            try
+                            {
+                                var font = iText.Kernel.Font.PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA_BOLD);
+                                canvas.BeginText()
+                                    .SetFontAndSize(font, 50)
+                                    .MoveText(100, 400)
+                                    .ShowText($"CONFIDENTIAL - Transfer {data.PtrId}")
+                                    .EndText();
+                            }
+                            catch (PdfException ex)
+                            {
+                                Console.WriteLine($"Warning: Failed to apply watermark on page {i}: {ex.Message}");
+                            }
+
+                            canvas.RestoreState();
+                        }
+                        Console.WriteLine("PDF watermark applied successfully.");
+                    }
+                    catch (PdfException ex)
+                    {
+                        throw new Exception($"Failed to add watermark to PDF: {ex.Message}", ex);
+                    }
+                }
+
+                // Step 4: Return the secured PDF
+                if (!System.IO.File.Exists(securedPdfFilePath) || new FileInfo(securedPdfFilePath).Length == 0)
+                {
+                    throw new Exception("Failed to generate the final PDF file.");
+                }
+
+                var fileBytes = await System.IO.File.ReadAllBytesAsync(securedPdfFilePath);
+                Console.WriteLine($"Returning PDF: {securedPdfFilePath}, Size: {fileBytes.Length} bytes");
+                return File(fileBytes, "application/pdf", "TransferData.pdf");
             }
+            catch (PdfException ex)
+            {
+                Console.WriteLine($"PdfException in GenerateTransferExcel: {ex.Message}\nStackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}\nInner StackTrace: {ex.InnerException.StackTrace}");
+                }
+                return StatusCode(500, $"PDF processing error: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GenerateTransferExcel: {ex.Message}\nStackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}\nInner StackTrace: {ex.InnerException.StackTrace}");
+                }
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+            finally
+            {
+                TryDeleteFile(tempExcelFilePath);
+                TryDeleteFile(tempPdfFilePath);
+                TryDeleteFile(securedPdfFilePath);
+            }
+        }
 
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(tempFilePath);
-            System.IO.File.Delete(tempFilePath);
+        // Helper method to delete files with retry mechanism
+        private void TryDeleteFile(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath) || !System.IO.File.Exists(filePath))
+                return;
 
-            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "TransferData.xlsx");
+            const int maxRetries = 5;
+            const int delayMs = 1000;
+
+            for (int i = 0; i < maxRetries; i++)
+            {
+                try
+                {
+                    System.IO.File.Delete(filePath);
+                    Console.WriteLine($"Deleted file: {filePath}");
+                    return;
+                }
+                catch (IOException)
+                {
+                    if (i == maxRetries - 1)
+                        Console.WriteLine($"Failed to delete file {filePath} after {maxRetries} attempts.");
+                    Thread.Sleep(delayMs);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error deleting file {filePath}: {ex.Message}");
+                    return;
+                }
+            }
         }
     }
 
@@ -278,6 +942,7 @@ namespace WebSystemMonitoring.Controllers
         public string Position { get; set; }
     }
 
+    // Surrender Data Model
     public class SurrenderData
     {
         public string Quantity { get; set; }
@@ -304,6 +969,7 @@ namespace WebSystemMonitoring.Controllers
         public int SurQTY { get; set; }
     }
 
+    // PAR Data Model
     public class ParData
     {
         public string ParID { get; set; }
@@ -327,6 +993,7 @@ namespace WebSystemMonitoring.Controllers
         public string? head { get; set; }
     }
 
+    // Transfer Data Model
     public class TransferData
     {
         public int PtrId { get; set; }

@@ -27,7 +27,9 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+//ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+ExcelPackage.License.SetNonCommercialOrganization("Local Government Unit");
+
 
 app.UseStaticFiles(new StaticFileOptions
 {
