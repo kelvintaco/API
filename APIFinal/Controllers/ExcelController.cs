@@ -2,6 +2,7 @@
 using OfficeOpenXml;
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Spire.Xls; // Namespace for FreeSpire.XLS
 using iText.Kernel.Pdf;
@@ -52,23 +53,28 @@ namespace WebSystemMonitoring.Controllers
                 // Step 1: Generate Excel file using EPPlus
                 using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
                 {
-                    var worksheet = package.Workbook.Worksheets["ICS"];
+                    // Log available worksheets
+                    var worksheetNames = package.Workbook.Worksheets.Select(ws => ws.Name).ToList();
+                    Console.WriteLine($"Available worksheets: {string.Join(", ", worksheetNames)}");
+
+                    var worksheet = package.Workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals("ICS", StringComparison.OrdinalIgnoreCase));
                     if (worksheet == null)
                     {
                         return BadRequest("Worksheet 'ICS' not found!");
                     }
 
-                    worksheet.Cells["J9"].Value = data.ICSID;
-                    worksheet.Cells["I13"].Value = data.ItemCode;
-                    worksheet.Cells["B13"].Value = data.ItemCode;
-                    worksheet.Cells["E13"].Value = data.Description;
-                    worksheet.Cells["C8"].Value = data.ICSName;
-                    worksheet.Cells["C13"].Value = data.ICSPrice;
-                    worksheet.Cells["J13"].Value = data.LifeTime;
-                    worksheet.Cells["A13"].Value = data.Qty;
-                    worksheet.Cells["C47"].Value = data.IcsDate.ToString("yyyy-MM-dd");
-                    worksheet.Cells["H47"].Value = data.IcsDate.ToString("yyyy-MM-dd");
-                    worksheet.Cells["G43"].Value = data.Position;
+                    // Updated cell assignments based on document structure
+                    worksheet.Cells["J9"].Value = data.ICSID; // ICS No.
+                    worksheet.Cells["B13"].Value = data.Qty; // Quantity
+                    worksheet.Cells["I13"].Value = data.ItemCode; // Inventory Item No.
+                    worksheet.Cells["E13"].Value = data.Description; // Description
+                    worksheet.Cells["C13"].Value = data.ICSPrice; // Unit Cost
+                    worksheet.Cells["C8"].Value = data.ICSName; // Received from
+                    worksheet.Cells["J13"].Value = data.LifeTime; // Estimated Useful Life
+                    worksheet.Cells["C47"].Value = data.IcsDate.ToString("yyyy-MM-dd"); // Date (Received from)
+                    worksheet.Cells["H47"].Value = data.IcsDate.ToString("yyyy-MM-dd"); // Date (Received by)
+                    worksheet.Cells["G43"].Value = data.Position; // Position/Office
+                    worksheet.Cells["A2"].Value = "GF"; // Fund Cluster
 
                     package.SaveAs(new FileInfo(tempExcelFilePath));
                 }
@@ -101,6 +107,23 @@ namespace WebSystemMonitoring.Controllers
                     {
                         workbook.LoadFromFile(tempExcelFilePath);
                         Console.WriteLine($"FreeSpire.XLS loaded Excel: {tempExcelFilePath}");
+
+                        // Ensure only the ICS worksheet is converted
+                        var worksheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals("ICS", StringComparison.OrdinalIgnoreCase));
+                        if (worksheet == null)
+                        {
+                            throw new Exception("ICS worksheet not found in FreeSpire.XLS workbook.");
+                        }
+
+                        // Hide other worksheets
+                        foreach (var ws in workbook.Worksheets)
+                        {
+                            if (!ws.Name.Equals("ICS", StringComparison.OrdinalIgnoreCase))
+                            {
+                                ws.Visibility = WorksheetVisibility.Hidden;
+                            }
+                        }
+
                         workbook.SaveToFile(tempPdfFilePath, FileFormat.PDF);
                         Console.WriteLine($"FreeSpire.XLS saved PDF: {tempPdfFilePath}");
                     }
@@ -202,6 +225,9 @@ namespace WebSystemMonitoring.Controllers
 
                 var fileBytes = await System.IO.File.ReadAllBytesAsync(securedPdfFilePath);
                 Console.WriteLine($"Returning PDF: {securedPdfFilePath}, Size: {fileBytes.Length} bytes");
+                Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+                Response.Headers.Add("Pragma", "no-cache");
+                Response.Headers.Add("Expires", "0");
                 return File(fileBytes, "application/pdf", "ICSData.pdf");
             }
             catch (PdfException ex)
@@ -260,30 +286,35 @@ namespace WebSystemMonitoring.Controllers
                 // Step 1: Generate Excel file using EPPlus
                 using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
                 {
-                    var worksheet = package.Workbook.Worksheets["surrender"];
+                    // Log available worksheets
+                    var worksheetNames = package.Workbook.Worksheets.Select(ws => ws.Name).ToList();
+                    Console.WriteLine($"Available worksheets: {string.Join(", ", worksheetNames)}");
+
+                    var worksheet = package.Workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals("surrender", StringComparison.OrdinalIgnoreCase));
                     if (worksheet == null)
                     {
                         return BadRequest("Worksheet 'surrender' not found!");
                     }
 
-                    worksheet.Cells["A9"].Value = data.Quantity;
-                    worksheet.Cells["B9"].Value = data.ItemCode;
-                    worksheet.Cells["C9"].Value = data.ItemName;
-                    worksheet.Cells["D9"].Value = data.ParDate.ToString("yyyy-MM-dd");
-                    worksheet.Cells["E9"].Value = data.ParID;
-                    worksheet.Cells["F9"].Value = data.Value;
-                    worksheet.Cells["G9"].Value = data.Price;
-                    worksheet.Cells["A35"].Value = data.ParName;
-                    worksheet.Cells["A40"].Value = data.Condition;
+                    // Updated cell assignments based on document structure
+                    worksheet.Cells["A9"].Value = data.Quantity; // QTY
+                    worksheet.Cells["B9"].Value = data.ItemCode; // UNIT
+                    worksheet.Cells["C9"].Value = data.ItemName; // DESCRIPTION
+                    worksheet.Cells["D9"].Value = data.ParDate.ToString("yyyy-MM-dd"); // DATE ACQUIRED
+                    worksheet.Cells["E9"].Value = data.ParID; // PROPERTY NO
+                    worksheet.Cells["F9"].Value = data.Value; // UNIT VALUE
+                    worksheet.Cells["G9"].Value = data.Price; // TOTAL VALUE
+                    worksheet.Cells["A35"].Value = data.ParName; // SURRENDERED BY
+                    worksheet.Cells["A40"].Value = data.Condition; // ITEM CONDITION
 
-                    if (data.IsClassification1) worksheet.Cells["A25"].Value = "/";
-                    if (data.IsClassification2) worksheet.Cells["A26"].Value = "/";
-                    if (data.IsClassification3) worksheet.Cells["A27"].Value = "/";
-                    if (data.IsClassification4) worksheet.Cells["A28"].Value = "/";
-                    if (data.IsClassification5) worksheet.Cells["A29"].Value = "/";
+                    if (data.IsClassification1) worksheet.Cells["A25"].Value = "/"; // Office Equipment
+                    if (data.IsClassification2) worksheet.Cells["A26"].Value = "/"; // Furniture & Fixtures
+                    if (data.IsClassification3) worksheet.Cells["A27"].Value = "/"; // IT Equipment
+                    if (data.IsClassification4) worksheet.Cells["A28"].Value = "/"; // Other Machinery & Equipment
+                    if (data.IsClassification5) worksheet.Cells["A29"].Value = "/"; // Communication Equipment
 
-                    if (data.CopiesEndUser) worksheet.Cells["G25"].Value = "/";
-                    if (data.CopiesGSO) worksheet.Cells["G26"].Value = "/";
+                    if (data.CopiesEndUser) worksheet.Cells["G25"].Value = "/"; // End User
+                    if (data.CopiesGSO) worksheet.Cells["G26"].Value = "/"; // GSO
 
                     package.SaveAs(new FileInfo(tempExcelFilePath));
                 }
@@ -316,6 +347,23 @@ namespace WebSystemMonitoring.Controllers
                     {
                         workbook.LoadFromFile(tempExcelFilePath);
                         Console.WriteLine($"FreeSpire.XLS loaded Excel: {tempExcelFilePath}");
+
+                        // Ensure only the surrender worksheet is converted
+                        var worksheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals("surrender", StringComparison.OrdinalIgnoreCase));
+                        if (worksheet == null)
+                        {
+                            throw new Exception("Surrender worksheet not found in FreeSpire.XLS workbook.");
+                        }
+
+                        // Hide other worksheets
+                        foreach (var ws in workbook.Worksheets)
+                        {
+                            if (!ws.Name.Equals("surrender", StringComparison.OrdinalIgnoreCase))
+                            {
+                                ws.Visibility = WorksheetVisibility.Hidden;
+                            }
+                        }
+
                         workbook.SaveToFile(tempPdfFilePath, FileFormat.PDF);
                         Console.WriteLine($"FreeSpire.XLS saved PDF: {tempPdfFilePath}");
                     }
@@ -417,6 +465,9 @@ namespace WebSystemMonitoring.Controllers
 
                 var fileBytes = await System.IO.File.ReadAllBytesAsync(securedPdfFilePath);
                 Console.WriteLine($"Returning PDF: {securedPdfFilePath}, Size: {fileBytes.Length} bytes");
+                Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+                Response.Headers.Add("Pragma", "no-cache");
+                Response.Headers.Add("Expires", "0");
                 return File(fileBytes, "application/pdf", "SurrenderData.pdf");
             }
             catch (PdfException ex)
@@ -453,6 +504,11 @@ namespace WebSystemMonitoring.Controllers
                 return BadRequest("Request body is null or invalid.");
             }
 
+            if (data.ParDate == default)
+            {
+                return BadRequest("ParDate is required and must be a valid date.");
+            }
+
             Console.WriteLine($"Received PAR data: ParID={data.ParID}, ItemCode={data.ItemCode}, ParDate={data.ParDate}");
 
             var templateFileName = "various-form.xlsx";
@@ -475,42 +531,47 @@ namespace WebSystemMonitoring.Controllers
                 // Step 1: Generate Excel file using EPPlus
                 using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
                 {
-                    var worksheet = package.Workbook.Worksheets["PAR"];
+                    // Log available worksheets
+                    var worksheetNames = package.Workbook.Worksheets.Select(ws => ws.Name).ToList();
+                    Console.WriteLine($"Available worksheets: {string.Join(", ", worksheetNames)}");
+
+                    var worksheet = package.Workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals("PAR", StringComparison.OrdinalIgnoreCase));
                     if (worksheet == null)
                     {
                         return BadRequest("Worksheet 'PAR' not found!");
                     }
 
-                    worksheet.Cells["F6"].Value = data.ParID;
-                    worksheet.Cells["E9"].Value = data.ItemCode;
-                    worksheet.Cells["B9"].Value = data.ItemCode;
-                    worksheet.Cells["C9"].Value = data.ItemName;
-                    worksheet.Cells["E40"].Value = data.ParName;
-                    worksheet.Cells["C36"].Value = data.ParDate.ToString("yyyy-MM-dd");
-                    worksheet.Cells["D9"].Value = data.ParDate.ToString("yyyy-MM-dd");
-                    worksheet.Cells["C35"].Value = data.RefNo;
-                    worksheet.Cells["A9"].Value = data.ParQty;
-                    worksheet.Cells["F9"].Value = data.value;
-                    worksheet.Cells["D47"].Value = data.head;
+                    // Cell assignments based on document structure
+                    worksheet.Cells["F6"].Value = data.ParID; // PAR NO.
+                    worksheet.Cells["A9"].Value = data.ParQty; // QTY
+                    worksheet.Cells["B9"].Value = data.ItemCode; // UNIT
+                    worksheet.Cells["C9"].Value = data.ItemName; // DESCRIPTION
+                    worksheet.Cells["D9"].Value = data.ParDate.ToString("yyyy-MM-dd"); // DATE ACQUIRED
+                    worksheet.Cells["E9"].Value = data.ItemCode; // PROPERTY NO
+                    worksheet.Cells["F9"].Value = data.value; // UNIT VALUE
+                    worksheet.Cells["E40"].Value = data.ParName; // RECEIVED BY
+                    worksheet.Cells["C36"].Value = data.ParDate.ToString("yyyy-MM-dd"); // Date (Reference)
+                    worksheet.Cells["C35"].Value = data.RefNo; // Reference Check #
+                    worksheet.Cells["D47"].Value = data.head; // OFFICE HEAD
 
-                    if (data.IsClassification1) worksheet.Cells["A29"].Value = "/";
-                    if (data.IsClassification2) worksheet.Cells["A30"].Value = "/";
-                    if (data.IsClassification3) worksheet.Cells["A31"].Value = "/";
-                    if (data.IsClassification4) worksheet.Cells["A32"].Value = "/";
-                    if (data.IsClassification5) worksheet.Cells["A33"].Value = "/";
+                    if (data.IsClassification1) worksheet.Cells["A29"].Value = "/"; // Office Equipment
+                    if (data.IsClassification2) worksheet.Cells["A30"].Value = "/"; // Furniture & Fixtures
+                    if (data.IsClassification3) worksheet.Cells["A31"].Value = "/"; // IT Equipment
+                    if (data.IsClassification4) worksheet.Cells["A32"].Value = "/"; // Other Machinery & Equipment
+                    if (data.IsClassification5) worksheet.Cells["A33"].Value = "/"; // Communication Equipment
 
-                    if (data.Copies1) worksheet.Cells["G33"].Value = "/";
-                    if (data.Copies2) worksheet.Cells["G34"].Value = "/";
-                    if (data.Copies3) worksheet.Cells["G35"].Value = "/";
-                    if (data.Copies4) worksheet.Cells["G36"].Value = "/";
+                    if (data.Copies1) worksheet.Cells["G33"].Value = "/"; // Requisitioner c/o Property Custodian
+                    if (data.Copies2) worksheet.Cells["G34"].Value = "/"; // GSO
+                    if (data.Copies3) worksheet.Cells["G35"].Value = "/"; // Accounting Office
+                    if (data.Copies4) worksheet.Cells["G36"].Value = "/"; // Disbursement Voucher
 
-                    worksheet.Cells["D29"].Value = data.FundType.Contains("GF") ? "/" : "";
-                    worksheet.Cells["D30"].Value = data.FundType.Contains("SEF") ? "/" : "";
-                    worksheet.Cells["G29"].Value = data.FundType.Contains("Trust Fund") ? "/" : "";
-                    worksheet.Cells["F30"].Value = data.FundType.Contains("Other") ? "/" : "";
-                    if (data.FundType.Contains("Other"))
+                    worksheet.Cells["D29"].Value = data.FundType.Contains("GF") ? "/" : ""; // GF
+                    worksheet.Cells["D30"].Value = data.FundType.Contains("SEF") ? "/" : ""; // SEF
+                    worksheet.Cells["G29"].Value = data.FundType.Contains("Trust Fund") ? "/" : ""; // Trust Fund
+                    worksheet.Cells["F30"].Value = data.FundType.Contains("Other") ? "/" : ""; // Other
+                    if (data.FundType.Contains("Other") && !string.Equals(data.FundType, "Other", StringComparison.OrdinalIgnoreCase))
                     {
-                        worksheet.Cells["F30"].Value = data.FundType;
+                        worksheet.Cells["F30"].Value = data.FundType; // Specify other fund type
                     }
 
                     package.SaveAs(new FileInfo(tempExcelFilePath));
@@ -544,6 +605,23 @@ namespace WebSystemMonitoring.Controllers
                     {
                         workbook.LoadFromFile(tempExcelFilePath);
                         Console.WriteLine($"FreeSpire.XLS loaded Excel: {tempExcelFilePath}");
+
+                        // Ensure only the PAR worksheet is converted
+                        var worksheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals("PAR", StringComparison.OrdinalIgnoreCase));
+                        if (worksheet == null)
+                        {
+                            throw new Exception("PAR worksheet not found in FreeSpire.XLS workbook.");
+                        }
+
+                        // Hide other worksheets
+                        foreach (var ws in workbook.Worksheets)
+                        {
+                            if (!ws.Name.Equals("PAR", StringComparison.OrdinalIgnoreCase))
+                            {
+                                ws.Visibility = WorksheetVisibility.Hidden;
+                            }
+                        }
+
                         workbook.SaveToFile(tempPdfFilePath, FileFormat.PDF);
                         Console.WriteLine($"FreeSpire.XLS saved PDF: {tempPdfFilePath}");
                     }
@@ -645,6 +723,9 @@ namespace WebSystemMonitoring.Controllers
 
                 var fileBytes = await System.IO.File.ReadAllBytesAsync(securedPdfFilePath);
                 Console.WriteLine($"Returning PDF: {securedPdfFilePath}, Size: {fileBytes.Length} bytes");
+                Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+                Response.Headers.Add("Pragma", "no-cache");
+                Response.Headers.Add("Expires", "0");
                 return File(fileBytes, "application/pdf", "PARData.pdf");
             }
             catch (PdfException ex)
@@ -703,37 +784,40 @@ namespace WebSystemMonitoring.Controllers
                 // Step 1: Generate Excel file using EPPlus
                 using (var package = new ExcelPackage(new FileInfo(existingFilePath)))
                 {
-                    var worksheet = package.Workbook.Worksheets["Transfer"];
+                    // Log available worksheets
+                    var worksheetNames = package.Workbook.Worksheets.Select(ws => ws.Name).ToList();
+                    Console.WriteLine($"Available worksheets: {string.Join(", ", worksheetNames)}");
+
+                    var worksheet = package.Workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals("Transfer", StringComparison.OrdinalIgnoreCase));
                     if (worksheet == null)
                     {
                         return BadRequest("Worksheet 'Transfer' not found!");
                     }
 
-                    worksheet.Cells["A2"].Value = data.FundCluster;
-                    worksheet.Cells["B4"].Value = data.FromName;
-                    worksheet.Cells["C4"].Value = data.ToName;
-                    worksheet.Cells["D6"].Value = data.ItemCode;
-                    worksheet.Cells["E6"].Value = data.Description;
-                    worksheet.Cells["F6"].Value = data.CstCode;
-                    worksheet.Cells["G6"].Value = data.Name;
-                    worksheet.Cells["H6"].Value = data.DateTransferred.ToString("yyyy-MM-dd");
-                    worksheet.Cells["I6"].Value = data.Condition;
-                    worksheet.Cells["J6"].Value = data.ReceiveName;
-                    worksheet.Cells["A8"].Value = data.TransferType;
-                    worksheet.Cells["A10"].Value = data.ReasonForTransfer;
-                    worksheet.Cells["B12"].Value = data.ApprovedBy;
-                    worksheet.Cells["C12"].Value = data.ReleasedBy;
-                    worksheet.Cells["D12"].Value = data.Designation;
-                    worksheet.Cells["E12"].Value = data.PtrId;
-
-                    worksheet.Cells["B8"].Value = data.TransferType.Contains("Donation") ? "Yes" : "No";
-                    worksheet.Cells["C8"].Value = data.TransferType.Contains("Relocate") ? "Yes" : "No";
-                    worksheet.Cells["D8"].Value = data.TransferType.Contains("Reassignment") ? "Yes" : "No";
-                    worksheet.Cells["E8"].Value = data.TransferType.Contains("Other") ? "Yes" : "No";
-                    if (data.TransferType.Contains("Other"))
+                    // Updated cell assignments based on document structure
+                    worksheet.Cells["A2"].Value = data.FundCluster; // Fund Cluster
+                    worksheet.Cells["B4"].Value = data.FromName; // From Accountable Officer
+                    worksheet.Cells["C4"].Value = data.ToName; // To Accountable Officer
+                    worksheet.Cells["E12"].Value = data.PtrId; // PTR No.
+                    worksheet.Cells["H6"].Value = data.DateTransferred.ToString("yyyy-MM-dd"); // Date Acquired
+                    worksheet.Cells["D6"].Value = data.ItemCode; // Property No.
+                    worksheet.Cells["E6"].Value = data.Description; // Description
+                    worksheet.Cells["F6"].Value = data.CstCode; // Amount
+                    worksheet.Cells["I6"].Value = data.Condition; // Condition of PPE
+                    worksheet.Cells["J6"].Value = data.ReceiveName; // Received by
+                    worksheet.Cells["A8"].Value = data.TransferType; // Transfer Type
+                    worksheet.Cells["B8"].Value = data.TransferType.Contains("Donation") ? "Yes" : "No"; // Donation
+                    worksheet.Cells["C8"].Value = data.TransferType.Contains("Relocate") ? "Yes" : "No"; // Relocate
+                    worksheet.Cells["D8"].Value = data.TransferType.Contains("Reassignment") ? "Yes" : "No"; // Reassignment
+                    worksheet.Cells["E8"].Value = data.TransferType.Contains("Other") ? "Yes" : "No"; // Other
+                    if (data.TransferType.Contains("Other") && !string.Equals(data.TransferType, "Other", StringComparison.OrdinalIgnoreCase))
                     {
-                        worksheet.Cells["F8"].Value = data.TransferType;
+                        worksheet.Cells["F8"].Value = data.TransferType; // Specify other transfer type
                     }
+                    worksheet.Cells["A10"].Value = data.ReasonForTransfer; // Reason for Transfer
+                    worksheet.Cells["B12"].Value = data.ApprovedBy; // Approved by
+                    worksheet.Cells["C12"].Value = data.ReleasedBy; // Released/Issued by
+                    worksheet.Cells["D12"].Value = data.Designation; // Designation
 
                     package.SaveAs(new FileInfo(tempExcelFilePath));
                 }
@@ -766,6 +850,23 @@ namespace WebSystemMonitoring.Controllers
                     {
                         workbook.LoadFromFile(tempExcelFilePath);
                         Console.WriteLine($"FreeSpire.XLS loaded Excel: {tempExcelFilePath}");
+
+                        // Ensure only the Transfer worksheet is converted
+                        var worksheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals("Transfer", StringComparison.OrdinalIgnoreCase));
+                        if (worksheet == null)
+                        {
+                            throw new Exception("Transfer worksheet not found in FreeSpire.XLS workbook.");
+                        }
+
+                        // Hide other worksheets
+                        foreach (var ws in workbook.Worksheets)
+                        {
+                            if (!ws.Name.Equals("Transfer", StringComparison.OrdinalIgnoreCase))
+                            {
+                                ws.Visibility = WorksheetVisibility.Hidden;
+                            }
+                        }
+
                         workbook.SaveToFile(tempPdfFilePath, FileFormat.PDF);
                         Console.WriteLine($"FreeSpire.XLS saved PDF: {tempPdfFilePath}");
                     }
@@ -867,6 +968,9 @@ namespace WebSystemMonitoring.Controllers
 
                 var fileBytes = await System.IO.File.ReadAllBytesAsync(securedPdfFilePath);
                 Console.WriteLine($"Returning PDF: {securedPdfFilePath}, Size: {fileBytes.Length} bytes");
+                Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+                Response.Headers.Add("Pragma", "no-cache");
+                Response.Headers.Add("Expires", "0");
                 return File(fileBytes, "application/pdf", "TransferData.pdf");
             }
             catch (PdfException ex)
@@ -940,6 +1044,9 @@ namespace WebSystemMonitoring.Controllers
         public int Qty { get; set; }
         public DateOnly IcsDate { get; set; }
         public string Position { get; set; }
+        public DateOnly ICSDate { get; set; }
+        public DateOnly IcsDateReceived { get; set; }
+        public string FundCluster { get; set; }
     }
 
     // Surrender Data Model
@@ -967,6 +1074,8 @@ namespace WebSystemMonitoring.Controllers
         public string? archiveDate { get; set; }
         public string? ItemCond { get; set; }
         public int SurQTY { get; set; }
+        public string Clasification { get; set; }
+        public string Copies { get; set; }
     }
 
     // PAR Data Model
@@ -1012,5 +1121,18 @@ namespace WebSystemMonitoring.Controllers
         public string ApprovedBy { get; set; }
         public string ReleasedBy { get; set; }
         public string Designation { get; set; }
+        public string fundcluster { get; set; }
+        public string from { get; set; }
+        public string to { get; set; }
+        public string reason { get; set; }
+        public string approvedBy { get; set; }
+        public string designation { get; set; }
+        public string approvedByDate { get; set; }
+        public string releaseBy { get; set; }
+        public string designationRelease { get; set; }
+        public string releaseByDate { get; set; }
+        public string receivedBy { get; set; }
+        public string designationReceived { get; set; }
+        public string receivedByDate { get; set; }
     }
 }
