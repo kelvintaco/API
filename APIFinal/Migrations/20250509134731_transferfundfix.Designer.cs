@@ -4,6 +4,7 @@ using APIFinal.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace APIFinal.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250509134731_transferfundfix")]
+    partial class transferfundfix
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -282,11 +285,11 @@ namespace APIFinal.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("approvedByDate")
+                    b.Property<string>("approvedBy")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("apprvdBy")
+                    b.Property<string>("approvedByDate")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -297,7 +300,7 @@ namespace APIFinal.Migrations
                     b.Property<DateOnly>("dateTransferred")
                         .HasColumnType("date");
 
-                    b.Property<string>("designationOf")
+                    b.Property<string>("designation")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -321,6 +324,10 @@ namespace APIFinal.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("receiveName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("receivedBy")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -334,10 +341,6 @@ namespace APIFinal.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("releaseByDate")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("rvName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 

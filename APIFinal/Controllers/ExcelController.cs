@@ -69,7 +69,8 @@ namespace WebSystemMonitoring.Controllers
                     worksheet.Cells["I13"].Value = data.ItemCode; // Inventory Item No.
                     worksheet.Cells["E13"].Value = data.Description; // Description
                     worksheet.Cells["C13"].Value = data.ICSPrice; // Unit Cost
-                    worksheet.Cells["C8"].Value = data.ICSName; // Received from
+                    worksheet.Cells["C8"].Value = data.ICSName;
+                    worksheet.Cells["G39"].Value = data.ICSName;
                     worksheet.Cells["J13"].Value = data.LifeTime; // Estimated Useful Life
                     worksheet.Cells["C47"].Value = data.IcsDate.ToString("yyyy-MM-dd"); // Date (Received from)
                     worksheet.Cells["H47"].Value = data.IcsDate.ToString("yyyy-MM-dd"); // Date (Received by)
@@ -795,29 +796,37 @@ namespace WebSystemMonitoring.Controllers
                     }
 
                     // Updated cell assignments based on document structure
-                    worksheet.Cells["A2"].Value = data.FundCluster; // Fund Cluster
-                    worksheet.Cells["B4"].Value = data.FromName; // From Accountable Officer
-                    worksheet.Cells["C4"].Value = data.ToName; // To Accountable Officer
-                    worksheet.Cells["E12"].Value = data.PtrId; // PTR No.
-                    worksheet.Cells["H6"].Value = data.DateTransferred.ToString("yyyy-MM-dd"); // Date Acquired
+                    worksheet.Cells["G6"].Value = data.FundCluster; // Fund Cluster
+                    worksheet.Cells["F8"].Value = data.FromName; // From Accountable Officer
+                    worksheet.Cells["F9"].Value = data.ToName; // To Accountable Officer
+                    worksheet.Cells["I8"].Value = data.PtrId; // PTR No.
+                    worksheet.Cells["I9"].Value = data.DateTransferred.ToString("yyyy-MM-dd"); // Date Acquired
                     worksheet.Cells["D6"].Value = data.ItemCode; // Property No.
-                    worksheet.Cells["E6"].Value = data.Description; // Description
+                    worksheet.Cells["D18"].Value = data.Description; // Description
                     worksheet.Cells["F6"].Value = data.CstCode; // Amount
-                    worksheet.Cells["I6"].Value = data.Condition; // Condition of PPE
-                    worksheet.Cells["J6"].Value = data.ReceiveName; // Received by
+                    worksheet.Cells["I18"].Value = data.Condition; // Condition of PPE
+                    worksheet.Cells["H53"].Value = data.ReceiveName; // Received by
                     worksheet.Cells["A8"].Value = data.TransferType; // Transfer Type
-                    worksheet.Cells["B8"].Value = data.TransferType.Contains("Donation") ? "Yes" : "No"; // Donation
-                    worksheet.Cells["C8"].Value = data.TransferType.Contains("Relocate") ? "Yes" : "No"; // Relocate
-                    worksheet.Cells["D8"].Value = data.TransferType.Contains("Reassignment") ? "Yes" : "No"; // Reassignment
-                    worksheet.Cells["E8"].Value = data.TransferType.Contains("Other") ? "Yes" : "No"; // Other
+                    worksheet.Cells["B13"].Value = data.TransferType.Contains("Donation") ? "/" : "";
+                    worksheet.Cells["E13"].Value = data.TransferType.Contains("Relocate") ? "/" : "";
+                    worksheet.Cells["B14"].Value = data.TransferType.Contains("Reassignment") ? "/" : "";
+                    worksheet.Cells["E14"].Value = data.TransferType.Contains("Other") ? "/" : "";
                     if (data.TransferType.Contains("Other") && !string.Equals(data.TransferType, "Other", StringComparison.OrdinalIgnoreCase))
                     {
-                        worksheet.Cells["F8"].Value = data.TransferType; // Specify other transfer type
+                        worksheet.Cells["G14"].Value = data.TransferType;
                     }
-                    worksheet.Cells["A10"].Value = data.ReasonForTransfer; // Reason for Transfer
-                    worksheet.Cells["B12"].Value = data.ApprovedBy; // Approved by
-                    worksheet.Cells["C12"].Value = data.ReleasedBy; // Released/Issued by
-                    worksheet.Cells["D12"].Value = data.Designation; // Designation
+                    worksheet.Cells["A44"].Value = data.ReasonForTransfer;
+                    worksheet.Cells["B54"].Value = data.Designation; 
+                    worksheet.Cells["F54"].Value = data.designationRelease;
+                    worksheet.Cells["H54"].Value = data.designationReceived;
+                    worksheet.Cells["A18"].Value = data.dateAcquired; 
+                    worksheet.Cells["H18"].Value = data.Amount; 
+                    worksheet.Cells["B18"].Value = data.ItemCode;
+                    worksheet.Cells["B53"].Value = data.ApprovedBy;
+                    worksheet.Cells["F53"].Value = data.ReleasedBy;
+                    worksheet.Cells["H53"].Value = data.approvedByDate;
+                    worksheet.Cells["H53"].Value = data.releaseByDate;
+                    worksheet.Cells["H53"].Value = data.receivedByDate;
 
                     package.SaveAs(new FileInfo(tempExcelFilePath));
                 }
@@ -1044,7 +1053,7 @@ namespace WebSystemMonitoring.Controllers
         public int Qty { get; set; }
         public DateOnly IcsDate { get; set; }
         public string Position { get; set; }
-        public DateOnly ICSDate { get; set; }
+        public DateOnly ICSSDate { get; set; }
         public DateOnly IcsDateReceived { get; set; }
         public string FundCluster { get; set; }
     }
@@ -1121,12 +1130,12 @@ namespace WebSystemMonitoring.Controllers
         public string ApprovedBy { get; set; }
         public string ReleasedBy { get; set; }
         public string Designation { get; set; }
-        public string fundcluster { get; set; }
+        public string fundccl { get; set; }
         public string from { get; set; }
         public string to { get; set; }
         public string reason { get; set; }
-        public string approvedBy { get; set; }
-        public string designation { get; set; }
+        public string apprvdBy { get; set; }
+        public string designationOf { get; set; }
         public string approvedByDate { get; set; }
         public string releaseBy { get; set; }
         public string designationRelease { get; set; }
@@ -1134,5 +1143,8 @@ namespace WebSystemMonitoring.Controllers
         public string receivedBy { get; set; }
         public string designationReceived { get; set; }
         public string receivedByDate { get; set; }
+        public string dateAcquired { get; set; }
+        public int Amount { get; set; }
+        public string rvName { get; set; }
     }
 }
