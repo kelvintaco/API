@@ -22,6 +22,65 @@ namespace WebSystemMonitoring.Controllers
             // Set EPPlus license context
             ExcelPackage.License.SetNonCommercialOrganization("Local Government Unit");
         }
+        // Helper method to convert Excel to PDF with A4 settings
+        private void ConvertExcelToPdf(string excelFilePath, string pdfFilePath, string worksheetName)
+        {
+            try
+            {
+                using (var workbook = new Workbook())
+                {
+                    workbook.LoadFromFile(excelFilePath);
+                    Console.WriteLine($"FreeSpire.XLS loaded Excel: {excelFilePath}");
+
+                    // Ensure only the specified worksheet is converted
+                    var worksheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals(worksheetName, StringComparison.OrdinalIgnoreCase));
+                    if (worksheet == null)
+                    {
+                        throw new Exception($"{worksheetName} worksheet not found in FreeSpire.XLS workbook.");
+                    }
+
+                    // Hide other worksheets
+                    foreach (var ws in workbook.Worksheets)
+                    {
+                        if (!ws.Name.Equals(worksheetName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            ws.Visibility = WorksheetVisibility.Hidden;
+                        }
+                    }
+
+                    // Configure A4 page settings
+                    var pageSetup = worksheet.PageSetup;
+                    pageSetup.PaperSize = PaperSizeType.PaperA4; // Set A4 page size
+                    pageSetup.FitToPagesWide = 1; // Fit to 1 page wide
+                    pageSetup.FitToPagesTall = 1; // Fit to 1 page tall
+                    pageSetup.IsFitToPage = true; // Enable fit-to-page scaling
+                    pageSetup.LeftMargin = 0.5f; // 0.5 inch margins
+                    pageSetup.RightMargin = 0.5f;
+                    pageSetup.TopMargin = 0.5f;
+                    pageSetup.BottomMargin = 0.5f;
+                    pageSetup.Zoom = 100; // Default zoom, overridden by FitToPages
+
+                    // ICS-specific settings to prevent right-side truncation
+                    if (worksheetName.Equals("ICS", StringComparison.OrdinalIgnoreCase))
+                    {
+                        pageSetup.RightMargin = 0.65f; // Increased right margin for ICS
+                        pageSetup.Zoom = 85; // Reduce scaling to fit content
+                    }
+                    else
+                    {
+                        pageSetup.RightMargin = 0.5f; // Standard right margin for others
+                        pageSetup.Zoom = 100; // Default zoom for others
+                    }
+
+                    workbook.SaveToFile(pdfFilePath, FileFormat.PDF);
+                    Console.WriteLine($"FreeSpire.XLS saved PDF: {pdfFilePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"FreeSpire.XLS failed to convert Excel to PDF: {ex.Message}", ex);
+            }
+        }
 
         [HttpPost("generate-ics")]
         public async Task<IActionResult> GenerateIcsExcel([FromBody] ICSData data)
@@ -102,6 +161,7 @@ namespace WebSystemMonitoring.Controllers
                 }
 
                 // Step 2: Convert Excel to PDF using FreeSpire.XLS
+                
                 try
                 {
                     using (var workbook = new Workbook())
@@ -133,7 +193,7 @@ namespace WebSystemMonitoring.Controllers
                 {
                     throw new Exception($"FreeSpire.XLS failed to convert Excel to PDF: {ex.Message}", ex);
                 }
-
+                ConvertExcelToPdf(tempExcelFilePath, tempPdfFilePath, "ICS");
                 // Validate FreeSpire.XLS output
                 if (!System.IO.File.Exists(tempPdfFilePath) || new FileInfo(tempPdfFilePath).Length == 0)
                 {
@@ -373,7 +433,7 @@ namespace WebSystemMonitoring.Controllers
                 {
                     throw new Exception($"FreeSpire.XLS failed to convert Excel to PDF: {ex.Message}", ex);
                 }
-
+                ConvertExcelToPdf(tempExcelFilePath, tempPdfFilePath, "surrender");
                 // Validate FreeSpire.XLS output
                 if (!System.IO.File.Exists(tempPdfFilePath) || new FileInfo(tempPdfFilePath).Length == 0)
                 {
@@ -884,7 +944,7 @@ namespace WebSystemMonitoring.Controllers
                 {
                     throw new Exception($"FreeSpire.XLS failed to convert Excel to PDF: {ex.Message}", ex);
                 }
-
+                ConvertExcelToPdf(tempExcelFilePath, tempPdfFilePath, "Transfer");
                 // Validate FreeSpire.XLS output
                 if (!System.IO.File.Exists(tempPdfFilePath) || new FileInfo(tempPdfFilePath).Length == 0)
                 {
