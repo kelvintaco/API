@@ -54,6 +54,16 @@ namespace APIFinal.Controllers
             }
             return Ok(item.LifeTime);
         }
+        [HttpGet("getItemDescription/{itemName}")]
+        public ActionResult<string> GetDescription(string itemName)
+        {
+            var item = _dataContext.Items.FirstOrDefault(i => i.ItemName == itemName);
+            if (item == null)
+            {
+                return NotFound($"Item with name '{itemName}' not found.");
+            }
+            return Ok(item.ItemDeets);
+        }
 
         [HttpPost]
         public void PostItem(Items item)

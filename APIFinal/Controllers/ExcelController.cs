@@ -606,7 +606,8 @@ namespace WebSystemMonitoring.Controllers
                     worksheet.Cells["F6"].Value = data.ParID; // PAR NO.
                     worksheet.Cells["A9"].Value = data.ParQty; // QTY
                     worksheet.Cells["B9"].Value = data.ItemCode; // UNIT
-                    worksheet.Cells["C9"].Value = data.ItemName; // DESCRIPTION
+                    //worksheet.Cells["C9"].Value = data.ItemName;
+                    worksheet.Cells["C9"].Value = $"{data.ItemName} - {data.ItemDetails}";// DESCRIPTION
                     worksheet.Cells["D9"].Value = data.ParDate.ToString("yyyy-MM-dd"); // DATE ACQUIRED
                     worksheet.Cells["E9"].Value = data.ItemCode; // PROPERTY NO
                     worksheet.Cells["F9"].Value = data.value; // UNIT VALUE
@@ -1166,6 +1167,7 @@ namespace WebSystemMonitoring.Controllers
         public bool Copies2 { get; set; }
         public bool Copies3 { get; set; }
         public bool Copies4 { get; set; }
+        public string ItemDetails { get; set; }
         public string FundType { get; set; }
         public float value { get; set; }
         public string? head { get; set; }
