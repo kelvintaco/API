@@ -66,6 +66,18 @@ namespace WebSystemMonitoring.Controllers
                         pageSetup.RightMargin = 0.65f; // Increased right margin for ICS
                         pageSetup.Zoom = 85; // Reduce scaling to fit content
                     }
+                    if (worksheetName.Equals("surrender", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Additional ICS-specific settings
+                        pageSetup.RightMargin = 0.50f; // Ensure fit-to-page is enabled
+                        pageSetup.Zoom = 85; // Adjust zoom for ICS
+                    }
+                    if (worksheetName.Equals("transfer", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Additional ICS-specific settings
+                        pageSetup.RightMargin = 0.50f; // Ensure fit-to-page is enabled
+                        pageSetup.Zoom = 85; // Adjust zoom for ICS
+                    }
                     else
                     {
                         pageSetup.RightMargin = 0.5f; // Standard right margin for others
@@ -605,7 +617,8 @@ namespace WebSystemMonitoring.Controllers
                     // Cell assignments based on document structure
                     worksheet.Cells["F6"].Value = data.ParID; // PAR NO.
                     worksheet.Cells["A9"].Value = data.ParQty; // QTY
-                    worksheet.Cells["B9"].Value = data.ItemCode; // UNIT
+                    worksheet.Cells["B9"].Value = data.Unit; // UNIT
+                    //worksheet.Cells["B9"].Value = data.ItemCode; // UNIT
                     //worksheet.Cells["C9"].Value = data.ItemName;
                     worksheet.Cells["C9"].Value = $"{data.ItemName} - {data.ItemDetails}";// DESCRIPTION
                     worksheet.Cells["D9"].Value = data.ParDate.ToString("yyyy-MM-dd"); // DATE ACQUIRED
@@ -1158,6 +1171,7 @@ namespace WebSystemMonitoring.Controllers
         public DateTime ParDate { get; set; }
         public int RefNo { get; set; }
         public int ParQty { get; set; }
+        public string Unit { get; set; }
         public bool IsClassification1 { get; set; }
         public bool IsClassification2 { get; set; }
         public bool IsClassification3 { get; set; }
@@ -1171,6 +1185,7 @@ namespace WebSystemMonitoring.Controllers
         public string FundType { get; set; }
         public float value { get; set; }
         public string? head { get; set; }
+        public string? itemunit { get; set; }
     }
 
     // Transfer Data Model
