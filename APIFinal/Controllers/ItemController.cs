@@ -64,12 +64,68 @@ namespace APIFinal.Controllers
             }
             return Ok(item.ItemDeets);
         }
+        [HttpGet("byItemNamesWithStock")]
+        public List<Items> GetItemNamesWithStock()
+        {
+            return _dataContext.Items
+                .Where(i => i.Stock > 0)
+                .Select(i => new Items
+                {
+                    ItemName = i.ItemName,
+                    Stock = i.Stock
+                })
+                .ToList();
+        }
 
+        [HttpGet("getStock/{itemName}")]
+        public ActionResult<int> GetStock(string itemName)
+        {
+            var item = _dataContext.Items.FirstOrDefault(i => i.ItemName == itemName);
+            if (item == null)
+            {
+                return NotFound($"Item with name '{itemName}' not found.");
+            }
+            return Ok(item.Stock);
+        }
+
+        [HttpPut("updateStock/{itemName}")]
+        public IActionResult UpdateStock(string itemName, [FromBody] int quantity)
+        {
+            var item = _dataContext.Items.FirstOrDefault(i => i.ItemName == itemName);
+            if (item == null)
+            {
+                return NotFound($"Item with name '{itemName}' not found.");
+            }
+
+            // Ensure stock doesn't go below 0
+            if (item.Stock - quantity < 0)
+            {
+                return BadRequest($"Cannot reduce stock below 0. Current stock: {item.Stock}");
+            }
+
+            item.Stock -= quantity;
+            _dataContext.SaveChanges();
+            return Ok($"Stock updated for item '{itemName}'. New stock: {item.Stock}");
+        }
         [HttpPost]
         public void PostItem(Items item)
         {
             _dataContext.Items.Add(item);
             _dataContext.SaveChanges();
+        }
+
+        [HttpPut("updatePlace/{itemName}")]
+        public IActionResult UpdateItemPlace(string itemName, [FromBody] string place)
+        {
+            var item = _dataContext.Items.FirstOrDefault(i => i.ItemName == itemName);
+            if (item == null)
+            {
+                return NotFound($"Item with name '{itemName}' not found.");
+            }
+
+            item.Place = place;
+            _dataContext.SaveChanges();
+            return Ok($"Place updated for item '{itemName}'");
         }
 
         [HttpDelete("byItemCode/{itemCode}", Name = "DeletebyItemCode")]
@@ -91,6 +147,31 @@ namespace APIFinal.Controllers
             _dataContext.Items.Remove(item);
             _dataContext.SaveChanges();
             return Ok($"Item with name '{itemName}' has been deleted.");
+        }
+        [HttpDelete("byDescription/{description}")]
+        public IActionResult DeleteByDescription(string description)
+        {
+            try
+            {
+                // Find the item by description
+                var item = _dataContext.Items
+                    .FirstOrDefault(i => i.ItemDeets == description);
+
+                if (item == null)
+                {
+                    return NotFound($"No item found with description: {description}");
+                }
+
+                // Remove the item
+                _dataContext.Items.Remove(item);
+                _dataContext.SaveChangesAsync();
+
+                return Ok($"Item with description {description} has been deleted");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "An error occurred while deleting the item");
+            }
         }
     }
 }
