@@ -4,12 +4,12 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Spire.Xls; // Namespace for FreeSpire.XLS
+using Spire.Xls; 
 using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas;
 using iText.Kernel.Colors;
 using iText.Kernel.Pdf.Extgstate;
-using iText.Kernel.Exceptions; // For PdfException
+using iText.Kernel.Exceptions; 
 
 namespace WebSystemMonitoring.Controllers
 {
@@ -68,15 +68,13 @@ namespace WebSystemMonitoring.Controllers
                     }
                     if (worksheetName.Equals("surrender", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Additional ICS-specific settings
-                        pageSetup.RightMargin = 0.50f; // Ensure fit-to-page is enabled
-                        pageSetup.Zoom = 85; // Adjust zoom for ICS
+                        pageSetup.RightMargin = 0.50f;
+                        pageSetup.Zoom = 65;
                     }
                     if (worksheetName.Equals("transfer", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Additional ICS-specific settings
-                        pageSetup.RightMargin = 0.50f; // Ensure fit-to-page is enabled
-                        pageSetup.Zoom = 85; // Adjust zoom for ICS
+                        pageSetup.RightMargin = 0.50f; 
+                        pageSetup.Zoom = 85;
                     }
                     else
                     {
@@ -272,7 +270,7 @@ namespace WebSystemMonitoring.Controllers
                                 canvas.BeginText()
                                     .SetFontAndSize(font, 50)
                                     .MoveText(100, 400)
-                                    .ShowText($"CONFIDENTIAL - ICS {data.ICSID}")
+                                    .ShowText($"CONFIDENTIAL")
                                     .EndText();
                             }
                             catch (PdfException ex)
@@ -373,6 +371,7 @@ namespace WebSystemMonitoring.Controllers
                     worksheet.Cells["A9"].Value = data.Quantity; // QTY
                     worksheet.Cells["B9"].Value = data.ItemCode; // UNIT
                     worksheet.Cells["C9"].Value = data.ItemName; // DESCRIPTION
+                    worksheet.Cells["C9"].Style.WrapText = true;
                     worksheet.Cells["D9"].Value = data.ParDate.ToString("yyyy-MM-dd"); // DATE ACQUIRED
                     worksheet.Cells["E9"].Value = data.ParID; // PROPERTY NO
                     worksheet.Cells["F9"].Value = data.Value; // UNIT VALUE
@@ -512,7 +511,7 @@ namespace WebSystemMonitoring.Controllers
                                 canvas.BeginText()
                                     .SetFontAndSize(font, 50)
                                     .MoveText(100, 400)
-                                    .ShowText($"CONFIDENTIAL - Surrender {data.ParID}")
+                                    .ShowText($"CONFIDENTIAL")
                                     .EndText();
                             }
                             catch (PdfException ex)
@@ -772,7 +771,7 @@ namespace WebSystemMonitoring.Controllers
                                 canvas.BeginText()
                                     .SetFontAndSize(font, 50)
                                     .MoveText(100, 400)
-                                    .ShowText($"CONFIDENTIAL - PAR {data.ParID}")
+                                    .ShowText($"CONFIDENTIAL")
                                     .EndText();
                             }
                             catch (PdfException ex)
@@ -1025,7 +1024,7 @@ namespace WebSystemMonitoring.Controllers
                                 canvas.BeginText()
                                     .SetFontAndSize(font, 50)
                                     .MoveText(100, 400)
-                                    .ShowText($"CONFIDENTIAL - Transfer {data.PtrId}")
+                                    .ShowText($"CONFIDENTIAL")
                                     .EndText();
                             }
                             catch (PdfException ex)

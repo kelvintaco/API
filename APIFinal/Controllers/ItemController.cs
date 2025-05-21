@@ -127,6 +127,29 @@ namespace APIFinal.Controllers
             _dataContext.SaveChanges();
             return Ok($"Place updated for item '{itemName}'");
         }
+        [HttpPut("updateStockwhenSurrendered/{description}")]
+        public async Task<IActionResult> UpdateStock(string description)
+        {
+            try
+            {
+                var item = _dataContext.Items
+                    .FirstOrDefault(i => i.ItemDeets == description);
+
+                if (item == null)
+                {
+                    return NotFound($"No item found with description: {description}");
+                }
+
+                // Increment the stock by 1
+                item.Stock += 1;
+                await _dataContext.SaveChangesAsync();
+                return Ok($"Stock updated successfully. New stock: {item.Stock}");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "An error occurred while updating the stock");
+            }
+        }
 
         [HttpDelete("byItemCode/{itemCode}", Name = "DeletebyItemCode")]
         public void DeletebyItemCode(int itemcode)
