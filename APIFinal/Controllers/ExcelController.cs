@@ -60,27 +60,27 @@ namespace WebSystemMonitoring.Controllers
                     pageSetup.BottomMargin = 0.5f;
                     pageSetup.Zoom = 100; // Default zoom, overridden by FitToPages
 
-                    // ICS-specific settings to prevent right-side truncation
+                    //ICS-specific settings to prevent right-side truncation
                     if (worksheetName.Equals("ICS", StringComparison.OrdinalIgnoreCase))
                     {
-                        pageSetup.RightMargin = 0.65f; // Increased right margin for ICS
-                        pageSetup.Zoom = 85; // Reduce scaling to fit content
+                        pageSetup.RightMargin = 0.50f;
+                        pageSetup.Zoom = 85;
                     }
                     if (worksheetName.Equals("surrender", StringComparison.OrdinalIgnoreCase))
                     {
                         pageSetup.RightMargin = 0.50f;
-                        pageSetup.Zoom = 65;
+                        pageSetup.Zoom = 85;
                     }
                     if (worksheetName.Equals("transfer", StringComparison.OrdinalIgnoreCase))
                     {
                         pageSetup.RightMargin = 0.50f; 
                         pageSetup.Zoom = 85;
                     }
-                    else
-                    {
-                        pageSetup.RightMargin = 0.5f; // Standard right margin for others
-                        pageSetup.Zoom = 100; // Default zoom for others
-                    }
+                    //else
+                    //{
+                    //    pageSetup.RightMargin = 0.5f; // Standard right margin for others
+                    //    pageSetup.Zoom = 100; // Default zoom for others
+                    //}
 
                     workbook.SaveToFile(pdfFilePath, FileFormat.PDF);
                     Console.WriteLine($"FreeSpire.XLS saved PDF: {pdfFilePath}");
@@ -133,8 +133,10 @@ namespace WebSystemMonitoring.Controllers
                     }
 
                     // Updated cell assignments based on document structure
+                    worksheet.Cells.Style.WrapText = true; // Apply globally or to specific cells
                     worksheet.Cells["J9"].Value = data.ICSID; // ICS No.
-                    worksheet.Cells["B13"].Value = data.Qty; // Quantity
+                    worksheet.Cells["A13"].Value = data.Qty; // Quantity
+                    worksheet.Cells["B13"].Value = "pcs";
                     worksheet.Cells["I13"].Value = data.ItemCode; // Inventory Item No.
                     worksheet.Cells["E13"].Value = data.Description; // Description
                     worksheet.Cells["C13"].Value = data.ICSPrice; // Unit Cost
@@ -169,9 +171,9 @@ namespace WebSystemMonitoring.Controllers
                 {
                     throw new Exception($"Generated Excel file is corrupted: {ex.Message}", ex);
                 }
-
-                // Step 2: Convert Excel to PDF using FreeSpire.XLS
                 
+                // Step 2: Convert Excel to PDF using FreeSpire.XLS
+
                 try
                 {
                     using (var workbook = new Workbook())
@@ -203,7 +205,7 @@ namespace WebSystemMonitoring.Controllers
                 {
                     throw new Exception($"FreeSpire.XLS failed to convert Excel to PDF: {ex.Message}", ex);
                 }
-                ConvertExcelToPdf(tempExcelFilePath, tempPdfFilePath, "ICS");
+                
                 // Validate FreeSpire.XLS output
                 if (!System.IO.File.Exists(tempPdfFilePath) || new FileInfo(tempPdfFilePath).Length == 0)
                 {
@@ -227,7 +229,7 @@ namespace WebSystemMonitoring.Controllers
                 {
                     throw new Exception($"FreeSpire.XLS generated a corrupted PDF: {ex.Message}", ex);
                 }
-
+                ConvertExcelToPdf(tempExcelFilePath, tempPdfFilePath, "ICS");
                 // Step 3: Use iText to add metadata and watermark
                 using (var pdfReader = new PdfReader(tempPdfFilePath))
                 using (var pdfWriter = new PdfWriter(new FileStream(securedPdfFilePath, FileMode.Create, FileAccess.Write)))
@@ -622,7 +624,7 @@ namespace WebSystemMonitoring.Controllers
                     worksheet.Cells["C9"].Value = $"{data.ItemName} - {data.ItemDetails}";// DESCRIPTION
                     worksheet.Cells["D9"].Value = data.ParDate.ToString("yyyy-MM-dd"); // DATE ACQUIRED
                     worksheet.Cells["E9"].Value = data.ItemCode; // PROPERTY NO
-                    worksheet.Cells["F9"].Value = data.value; // UNIT VALUE
+                    worksheet.Cells["F9"].Value = data._value; // UNIT VALUE
                     worksheet.Cells["E40"].Value = data.ParName; // RECEIVED BY
                     worksheet.Cells["C36"].Value = data.ParDate.ToString("yyyy-MM-dd"); // Date (Reference)
                     worksheet.Cells["C35"].Value = data.RefNo; // Reference Check #
@@ -1182,7 +1184,7 @@ namespace WebSystemMonitoring.Controllers
         public bool Copies4 { get; set; }
         public string ItemDetails { get; set; }
         public string FundType { get; set; }
-        public float value { get; set; }
+        public float _value { get; set; }
         public string? head { get; set; }
         public string? itemunit { get; set; }
     }
