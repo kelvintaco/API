@@ -140,6 +140,7 @@ namespace WebSystemMonitoring.Controllers
                     worksheet.Cells["I13"].Value = data.ItemCode; // Inventory Item No.
                     worksheet.Cells["E13"].Value = data.Description; // Description
                     worksheet.Cells["C13"].Value = data.ICSPrice; // Unit Cost
+                    worksheet.Cells["D13"].Value = data.ICSPrice; // Unit Cost
                     worksheet.Cells["C8"].Value = data.ICSName;
                     worksheet.Cells["G39"].Value = data.ICSName;
                     worksheet.Cells["J13"].Value = data.LifeTime; // Estimated Useful Life
@@ -381,14 +382,14 @@ namespace WebSystemMonitoring.Controllers
                     worksheet.Cells["A35"].Value = data.ParName; // SURRENDERED BY
                     worksheet.Cells["A40"].Value = data.Condition; // ITEM CONDITION
 
-                    if (data.IsClassification1) worksheet.Cells["A25"].Value = "/"; // Office Equipment
-                    if (data.IsClassification2) worksheet.Cells["A26"].Value = "/"; // Furniture & Fixtures
-                    if (data.IsClassification3) worksheet.Cells["A27"].Value = "/"; // IT Equipment
-                    if (data.IsClassification4) worksheet.Cells["A28"].Value = "/"; // Other Machinery & Equipment
-                    if (data.IsClassification5) worksheet.Cells["A29"].Value = "/"; // Communication Equipment
+                    if (data.IsClassification1) worksheet.Cells["A25"].Value = "✓"; // Office Equipment
+                    if (data.IsClassification2) worksheet.Cells["A26"].Value = "✓"; // Furniture & Fixtures
+                    if (data.IsClassification3) worksheet.Cells["A27"].Value = "✓"; // IT Equipment
+                    if (data.IsClassification4) worksheet.Cells["A28"].Value = "✓"; // Other Machinery & Equipment
+                    if (data.IsClassification5) worksheet.Cells["A29"].Value = "✓"; // Communication Equipment
 
-                    if (data.CopiesEndUser) worksheet.Cells["G25"].Value = "/"; // End User
-                    if (data.CopiesGSO) worksheet.Cells["G26"].Value = "/"; // GSO
+                    if (data.CopiesEndUser) worksheet.Cells["G25"].Value = "✓"; // End User
+                    if (data.CopiesGSO) worksheet.Cells["G26"].Value = "✓"; // GSO
 
                     package.SaveAs(new FileInfo(tempExcelFilePath));
                 }
@@ -625,26 +626,27 @@ namespace WebSystemMonitoring.Controllers
                     worksheet.Cells["D9"].Value = data.ParDate.ToString("yyyy-MM-dd"); // DATE ACQUIRED
                     worksheet.Cells["E9"].Value = data.ItemCode; // PROPERTY NO
                     worksheet.Cells["F9"].Value = data._value; // UNIT VALUE
+                    worksheet.Cells["G9"].Value = data._value; // UNIT VALUE
                     worksheet.Cells["E40"].Value = data.ParName; // RECEIVED BY
                     worksheet.Cells["C36"].Value = data.ParDate.ToString("yyyy-MM-dd"); // Date (Reference)
                     worksheet.Cells["C35"].Value = data.RefNo; // Reference Check #
                     worksheet.Cells["D47"].Value = data.head; // OFFICE HEAD
 
-                    if (data.IsClassification1) worksheet.Cells["A29"].Value = "/"; // Office Equipment
-                    if (data.IsClassification2) worksheet.Cells["A30"].Value = "/"; // Furniture & Fixtures
-                    if (data.IsClassification3) worksheet.Cells["A31"].Value = "/"; // IT Equipment
-                    if (data.IsClassification4) worksheet.Cells["A32"].Value = "/"; // Other Machinery & Equipment
-                    if (data.IsClassification5) worksheet.Cells["A33"].Value = "/"; // Communication Equipment
+                    if (data.IsClassification1) worksheet.Cells["A29"].Value = "✓"; // Office Equipment
+                    if (data.IsClassification2) worksheet.Cells["A30"].Value = "✓"; // Furniture & Fixtures
+                    if (data.IsClassification3) worksheet.Cells["A31"].Value = "✓"; // IT Equipment
+                    if (data.IsClassification4) worksheet.Cells["A32"].Value = "✓"; // Other Machinery & Equipment
+                    if (data.IsClassification5) worksheet.Cells["A33"].Value = "✓"; // Communication Equipment
 
-                    if (data.Copies1) worksheet.Cells["G33"].Value = "/"; // Requisitioner c/o Property Custodian
-                    if (data.Copies2) worksheet.Cells["G34"].Value = "/"; // GSO
-                    if (data.Copies3) worksheet.Cells["G35"].Value = "/"; // Accounting Office
-                    if (data.Copies4) worksheet.Cells["G36"].Value = "/"; // Disbursement Voucher
+                    if (data.Copies1) worksheet.Cells["G33"].Value = "✓"; // Requisitioner c/o Property Custodian
+                    if (data.Copies2) worksheet.Cells["G34"].Value = "✓"; // GSO
+                    if (data.Copies3) worksheet.Cells["G35"].Value = "✓"; // Accounting Office
+                    if (data.Copies4) worksheet.Cells["G36"].Value = "✓"; // Disbursement Voucher
 
-                    worksheet.Cells["D29"].Value = data.FundType.Contains("GF") ? "/" : ""; // GF
-                    worksheet.Cells["D30"].Value = data.FundType.Contains("SEF") ? "/" : ""; // SEF
-                    worksheet.Cells["G29"].Value = data.FundType.Contains("Trust Fund") ? "/" : ""; // Trust Fund
-                    worksheet.Cells["F30"].Value = data.FundType.Contains("Other") ? "/" : ""; // Other
+                    worksheet.Cells["D29"].Value = data.FundType.Contains("GF") ? "✓" : ""; // GF
+                    worksheet.Cells["D30"].Value = data.FundType.Contains("SEF") ? "✓" : ""; // SEF
+                    worksheet.Cells["G29"].Value = data.FundType.Contains("Trust Fund") ? "✓" : ""; // Trust Fund
+                    worksheet.Cells["F30"].Value = data.FundType.Contains("Other") ? "✓" : ""; // Other
                     if (data.FundType.Contains("Other") && !string.Equals(data.FundType, "Other", StringComparison.OrdinalIgnoreCase))
                     {
                         worksheet.Cells["F30"].Value = data.FundType; // Specify other fund type
@@ -882,10 +884,10 @@ namespace WebSystemMonitoring.Controllers
                     worksheet.Cells["I18"].Value = data.Condition; // Condition of PPE
                     worksheet.Cells["H53"].Value = data.ReceiveName; // Received by
                     worksheet.Cells["A8"].Value = data.TransferType; // Transfer Type
-                    worksheet.Cells["B13"].Value = data.TransferType.Contains("Donation") ? "/" : "";
-                    worksheet.Cells["E13"].Value = data.TransferType.Contains("Relocate") ? "/" : "";
-                    worksheet.Cells["B14"].Value = data.TransferType.Contains("Reassignment") ? "/" : "";
-                    worksheet.Cells["E14"].Value = data.TransferType.Contains("Other") ? "/" : "";
+                    worksheet.Cells["B13"].Value = data.TransferType.Contains("Donation") ? "✓" : "";
+                    worksheet.Cells["E13"].Value = data.TransferType.Contains("Relocate") ? "✓" : "";
+                    worksheet.Cells["B14"].Value = data.TransferType.Contains("Reassignment") ? "✓" : "";
+                    worksheet.Cells["E14"].Value = data.TransferType.Contains("Other") ? "✓" : "";
                     if (data.TransferType.Contains("Other") && !string.Equals(data.TransferType, "Other", StringComparison.OrdinalIgnoreCase))
                     {
                         worksheet.Cells["G14"].Value = data.TransferType;
