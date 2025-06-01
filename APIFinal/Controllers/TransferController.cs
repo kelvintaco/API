@@ -31,7 +31,20 @@ namespace APIFinal.Controllers
             bool exists = await _dataContext.Transfer.AnyAsync(c => c.PtrId == prtid);
             return Ok(exists);
         }
+        [HttpGet("GetLatestID")]
+        public async Task<IActionResult> GetLatestID()
+        {
+            var latestTransfer = await _dataContext.Transfer
+                .OrderByDescending(t => t.PtrId)
+                .FirstOrDefaultAsync();
 
+            if (latestTransfer == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(latestTransfer.PtrId);
+        }
 
         [HttpPost]
         public void Post([FromBody] Transfer transfer)

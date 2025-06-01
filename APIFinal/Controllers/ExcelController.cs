@@ -22,7 +22,7 @@ namespace WebSystemMonitoring.Controllers
             // Set EPPlus license context
             ExcelPackage.License.SetNonCommercialOrganization("Local Government Unit");
         }
-        // Helper method to convert Excel to PDF with A4 settings
+        
         private void ConvertExcelToPdf(string excelFilePath, string pdfFilePath, string worksheetName)
         {
             try
@@ -32,14 +32,14 @@ namespace WebSystemMonitoring.Controllers
                     workbook.LoadFromFile(excelFilePath);
                     Console.WriteLine($"FreeSpire.XLS loaded Excel: {excelFilePath}");
 
-                    // Ensure only the specified worksheet is converted
+                    
                     var worksheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Equals(worksheetName, StringComparison.OrdinalIgnoreCase));
                     if (worksheet == null)
                     {
                         throw new Exception($"{worksheetName} worksheet not found in FreeSpire.XLS workbook.");
                     }
 
-                    // Hide other worksheets
+                    
                     foreach (var ws in workbook.Worksheets)
                     {
                         if (!ws.Name.Equals(worksheetName, StringComparison.OrdinalIgnoreCase))
@@ -48,17 +48,17 @@ namespace WebSystemMonitoring.Controllers
                         }
                     }
 
-                    // Configure A4 page settings
+                    
                     var pageSetup = worksheet.PageSetup;
-                    pageSetup.PaperSize = PaperSizeType.PaperA4; // Set A4 page size
-                    pageSetup.FitToPagesWide = 1; // Fit to 1 page wide
-                    pageSetup.FitToPagesTall = 1; // Fit to 1 page tall
-                    pageSetup.IsFitToPage = true; // Enable fit-to-page scaling
-                    pageSetup.LeftMargin = 0.5f; // 0.5 inch margins
+                    pageSetup.PaperSize = PaperSizeType.PaperA4; 
+                    pageSetup.FitToPagesWide = 1; 
+                    pageSetup.FitToPagesTall = 1; 
+                    pageSetup.IsFitToPage = true; 
+                    pageSetup.LeftMargin = 0.5f; 
                     pageSetup.RightMargin = 0.5f;
                     pageSetup.TopMargin = 0.5f;
                     pageSetup.BottomMargin = 0.5f;
-                    pageSetup.Zoom = 100; // Default zoom, overridden by FitToPages
+                    pageSetup.Zoom = 100; 
 
                     //ICS-specific settings to prevent right-side truncation
                     if (worksheetName.Equals("ICS", StringComparison.OrdinalIgnoreCase))
@@ -376,9 +376,9 @@ namespace WebSystemMonitoring.Controllers
                     worksheet.Cells["C9"].Value = data.ItemName; // DESCRIPTION
                     worksheet.Cells["C9"].Style.WrapText = true;
                     worksheet.Cells["D9"].Value = data.ParDate.ToString("yyyy-MM-dd"); // DATE ACQUIRED
-                    worksheet.Cells["E9"].Value = data.ParID; // PROPERTY NO
-                    worksheet.Cells["F9"].Value = data.Value; // UNIT VALUE
-                    worksheet.Cells["G9"].Value = data.Price; // TOTAL VALUE
+                    worksheet.Cells["E9"].Value = data.PropertyNumber;
+                    worksheet.Cells["F9"].Value = data.Value;
+                    worksheet.Cells["G9"].Value = data.Value;
                     worksheet.Cells["A35"].Value = data.ParName; // SURRENDERED BY
                     worksheet.Cells["A40"].Value = data.Condition; // ITEM CONDITION
 
@@ -872,18 +872,17 @@ namespace WebSystemMonitoring.Controllers
                         return BadRequest("Worksheet 'Transfer' not found!");
                     }
 
-                    // Updated cell assignments based on document structure
-                    worksheet.Cells["G6"].Value = data.FundCluster; // Fund Cluster
+                    worksheet.Cells["I6"].Value = data.FundCluster; // Fund Cluster
                     worksheet.Cells["F8"].Value = data.FromName; // From Accountable Officer
                     worksheet.Cells["F9"].Value = data.ToName; // To Accountable Officer
                     worksheet.Cells["I8"].Value = data.PtrId; // PTR No.
-                    worksheet.Cells["I9"].Value = data.DateTransferred.ToString("yyyy-MM-dd"); // Date Acquired
-                    worksheet.Cells["D6"].Value = data.ItemCode; // Property No.
-                    worksheet.Cells["D18"].Value = data.Description; // Description
-                    worksheet.Cells["F6"].Value = data.CstCode; // Amount
+                    worksheet.Cells["I9"].Value = data.DateTransferred.ToString("yyyy-MM-dd"); 
+                    worksheet.Cells["C6"].Value = data.Description;
+                    worksheet.Cells["D18"].Value = data.Description;
+                    //worksheet.Cells["F6"].Value = data.CstCode; // Amount
                     worksheet.Cells["I18"].Value = data.Condition; // Condition of PPE
                     worksheet.Cells["H53"].Value = data.ReceiveName; // Received by
-                    worksheet.Cells["A8"].Value = data.TransferType; // Transfer Type
+                    //worksheet.Cells["A8"].Value = data.TransferType; // Transfer Type
                     worksheet.Cells["B13"].Value = data.TransferType.Contains("Donation") ? "✓" : "";
                     worksheet.Cells["E13"].Value = data.TransferType.Contains("Relocate") ? "✓" : "";
                     worksheet.Cells["B14"].Value = data.TransferType.Contains("Reassignment") ? "✓" : "";
@@ -901,9 +900,9 @@ namespace WebSystemMonitoring.Controllers
                     worksheet.Cells["B18"].Value = data.ItemCode;
                     worksheet.Cells["B53"].Value = data.ApprovedBy;
                     worksheet.Cells["F53"].Value = data.ReleasedBy;
-                    worksheet.Cells["H53"].Value = data.approvedByDate;
-                    worksheet.Cells["H53"].Value = data.releaseByDate;
-                    worksheet.Cells["H53"].Value = data.receivedByDate;
+                    worksheet.Cells["B55"].Value = data.approvedByDate;
+                    worksheet.Cells["F55"].Value = data.releaseByDate;
+                    worksheet.Cells["H55"].Value = data.receivedByDate;
 
                     package.SaveAs(new FileInfo(tempExcelFilePath));
                 }
@@ -1143,8 +1142,9 @@ namespace WebSystemMonitoring.Controllers
         public string ItemName { get; set; }
         public DateTime ParDate { get; set; }
         public string ParID { get; set; }
-        public double Value { get; set; }
-        public double Price { get; set; }
+        public string PropertyNumber { get; set; }
+        public float Value { get; set; }
+        public float Price { get; set; }
         public string ParName { get; set; }
         public string Condition { get; set; }
         public bool IsClassification1 { get; set; }
@@ -1197,6 +1197,7 @@ namespace WebSystemMonitoring.Controllers
         public int PtrId { get; set; }
         public int ItemCode { get; set; }
         public string Description { get; set; }
+        private string PropertyNumberT { get; set; }
         public string CstCode { get; set; }
         public string Name { get; set; }
         public DateOnly DateTransferred { get; set; }
