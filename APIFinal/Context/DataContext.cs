@@ -16,6 +16,10 @@ namespace APIFinal.Context
         public DbSet<Transfer> Transfer { get; set; }
         public DbSet<ArchivedTransactions> ArchievedTransactions { get; set; }
         public DbSet<ItemDisposal> ItemDisposal { get; set; }
+        public DbSet<PendingPAR> PendingPAR { get; set; }
+        public DbSet<PendingICS> PendingICS { get; set; }
+        public DbSet<PendingSur> PendingSur { get; set; }
+        public DbSet<PendingTrans> PendingTrans { get; set; }
 
         public DataContext(DbContextOptions<DataContext> options) : base(options) { }
         

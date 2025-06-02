@@ -134,7 +134,7 @@ namespace WebSystemMonitoring.Controllers
 
                     // Updated cell assignments based on document structure
                     worksheet.Cells.Style.WrapText = true; // Apply globally or to specific cells
-                    worksheet.Cells["J9"].Value = data.ICSID; // ICS No.
+                    worksheet.Cells["I9"].Value = data.ICSID; // ICS No.
                     worksheet.Cells["A13"].Value = data.Qty; // Quantity
                     worksheet.Cells["B13"].Value = "pcs";
                     worksheet.Cells["I13"].Value = data.ItemCode; // Inventory Item No.
@@ -143,7 +143,8 @@ namespace WebSystemMonitoring.Controllers
                     worksheet.Cells["D13"].Value = data.ICSPrice; // Unit Cost
                     worksheet.Cells["C8"].Value = data.ICSName;
                     worksheet.Cells["G39"].Value = data.ICSName;
-                    worksheet.Cells["J13"].Value = data.LifeTime; // Estimated Useful Life
+                    //worksheet.Cells["J13"].Value = data.Life; // Estimated Useful Life
+                    worksheet.Cells["J13"].Value = "3"; // Estimated Useful Life
                     worksheet.Cells["C47"].Value = data.IcsDate.ToString("yyyy-MM-dd"); // Date (Received from)
                     worksheet.Cells["H47"].Value = data.IcsDate.ToString("yyyy-MM-dd"); // Date (Received by)
                     worksheet.Cells["G43"].Value = data.Position; // Position/Office
@@ -627,7 +628,7 @@ namespace WebSystemMonitoring.Controllers
                     worksheet.Cells["E9"].Value = data.ItemCode; // PROPERTY NO
                     worksheet.Cells["F9"].Value = data._value; // UNIT VALUE
                     worksheet.Cells["G9"].Value = data._value; // UNIT VALUE
-                    worksheet.Cells["E40"].Value = data.ParName; // RECEIVED BY
+                    worksheet.Cells["D41"].Value = data.ParName; // RECEIVED BY
                     worksheet.Cells["C36"].Value = data.ParDate.ToString("yyyy-MM-dd"); // Date (Reference)
                     worksheet.Cells["C35"].Value = data.RefNo; // Reference Check #
                     worksheet.Cells["D47"].Value = data.head; // OFFICE HEAD
@@ -1125,7 +1126,7 @@ namespace WebSystemMonitoring.Controllers
         public string CSTCode { get; set; }
         public string ICSName { get; set; }
         public double ICSPrice { get; set; }
-        public int LifeTime { get; set; }
+        public int Life { get; set; }
         public int Qty { get; set; }
         public DateOnly IcsDate { get; set; }
         public string Position { get; set; }
